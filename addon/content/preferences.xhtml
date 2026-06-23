@@ -1,33 +1,97 @@
 <linkset>
   <html:link rel="localization" href="__addonRef__-preferences.ftl" />
 </linkset>
-<groupbox
+<vbox
   onload="Zotero.__addonInstance__.hooks.onPrefsEvent('load', { window })"
 >
-  <label><html:h2 data-l10n-id="pref-title"></html:h2></label>
-  <checkbox
-    id="zotero-prefpane-__addonRef__-enable"
-    preference="enable"
-    data-l10n-id="pref-enable"
-  />
-  <hbox>
+  <label><html:h1 data-l10n-id="pref-title"></html:h1></label>
+
+  <groupbox>
+    <label><html:h2 data-l10n-id="pref-group-columns"></html:h2></label>
+    <checkbox preference="titleColumn.enable" data-l10n-id="pref-titleColumn-enable" />
+    <vbox style="margin-inline-start: 1.5em;">
+      <checkbox preference="titleColumn.heat.enable" data-l10n-id="pref-titleColumn-heat" />
+      <checkbox preference="titleColumn.icon.enable" data-l10n-id="pref-titleColumn-icon" />
+      <checkbox preference="titleColumn.striping.enable" data-l10n-id="pref-titleColumn-striping" />
+      <checkbox preference="titleColumn.tagSwatches.enable" data-l10n-id="pref-titleColumn-tags" />
+    </vbox>
+    <separator />
+    <checkbox preference="creatorColumn.enable" data-l10n-id="pref-creatorColumn-enable" />
+    <hbox align="center" style="margin-inline-start: 1.5em;">
+      <html:label for="zs-creator-template" data-l10n-id="pref-creatorColumn-template"></html:label>
+      <html:input type="text" id="zs-creator-template" preference="creatorColumn.template" style="flex: 1;" />
+    </hbox>
+    <separator />
+    <checkbox preference="ratingColumn.enable" data-l10n-id="pref-ratingColumn-enable" />
+    <separator />
+    <checkbox preference="progressColumn.enable" data-l10n-id="pref-progressColumn-enable" />
+    <hbox align="center" style="margin-inline-start: 1.5em;">
+      <html:label data-l10n-id="pref-progressColumn-style"></html:label>
+      <menulist preference="progressColumn.style">
+        <menupopup>
+          <menuitem value="bar" label="bar" />
+          <menuitem value="line" label="line" />
+          <menuitem value="opacity" label="opacity" />
+          <menuitem value="stack" label="stack" />
+        </menupopup>
+      </menulist>
+    </hbox>
+  </groupbox>
+
+  <groupbox>
+    <label><html:h2 data-l10n-id="pref-group-tree"></html:h2></label>
+    <checkbox preference="collectionCounts.enable" data-l10n-id="pref-collectionCounts-enable" />
+    <hbox align="center" style="margin-inline-start: 1.5em;">
+      <html:label data-l10n-id="pref-collectionCounts-mode"></html:label>
+      <menulist preference="collectionCounts.mode">
+        <menupopup>
+          <menuitem value="child" label="child" />
+          <menuitem value="offspring" label="offspring" />
+          <menuitem value="both" label="both" />
+        </menupopup>
+      </menulist>
+    </hbox>
+    <separator />
+    <checkbox preference="readState.enable" data-l10n-id="pref-readState-enable" />
+    <vbox style="margin-inline-start: 1.5em;">
+      <checkbox preference="readState.wholeRow" data-l10n-id="pref-readState-wholeRow" />
+      <checkbox preference="readState.boldAllItems" data-l10n-id="pref-readState-boldAll" />
+    </vbox>
+  </groupbox>
+
+  <groupbox>
+    <label><html:h2 data-l10n-id="pref-group-graph"></html:h2></label>
+    <checkbox preference="graphView.enable" data-l10n-id="pref-graphView-enable" />
+    <hbox align="center" style="margin-inline-start: 1.5em;">
+      <html:label data-l10n-id="pref-graphView-mode"></html:label>
+      <menulist preference="graphView.mode">
+        <menupopup>
+          <menuitem value="default" label="default" />
+          <menuitem value="related" label="related" />
+          <menuitem value="author" label="author" />
+          <menuitem value="tag" label="tag" />
+        </menupopup>
+      </menulist>
+      <html:label data-l10n-id="pref-graphView-theme"></html:label>
+      <menulist preference="graphView.theme">
+        <menupopup>
+          <menuitem value="auto" label="auto" />
+          <menuitem value="light" label="light" />
+          <menuitem value="dark" label="dark" />
+        </menupopup>
+      </menulist>
+    </hbox>
+  </groupbox>
+
+  <groupbox>
+    <label><html:h2 data-l10n-id="pref-group-reading"></html:h2></label>
+    <checkbox preference="readingTime.enable" data-l10n-id="pref-readingTime-enable" />
+  </groupbox>
+
+  <vbox>
     <html:label
-      for="zotero-prefpane-__addonRef__-input"
-      data-l10n-id="pref-input"
+      data-l10n-id="pref-help"
+      data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
     ></html:label>
-    <html:input
-      type="text"
-      id="zotero-prefpane-__addonRef__-input"
-      preference="input"
-    ></html:input>
-  </hbox>
-  <hbox class="virtualized-table-container" flex="1" height="300px">
-    <html:div id="__addonRef__-table-container" />
-  </hbox>
-</groupbox>
-<vbox>
-  <html:label
-    data-l10n-id="pref-help"
-    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
-  ></html:label>
+  </vbox>
 </vbox>

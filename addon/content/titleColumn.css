@@ -1,0 +1,97 @@
+/*
+ * Stylero - Title column feature stylesheet (bucket B).
+ * Owned by src/modules/titleColumn.ts; injected per-window via a <link> in
+ * TitleColumnFactory.registerWindow(). All selectors are scoped to the
+ * stylero-title custom item-tree column so nothing here leaks into the rest
+ * of the Zotero UI.
+ *
+ * Layout of a single cell (built fresh on every paint in renderCell):
+ *
+ *   <span class="cell stylero-title-cell">
+ *     <span class="stylero-heat"></span>      <- absolute background layer
+ *     <img  class="stylero-title-icon">       <- file-type icon (optional)
+ *     <span class="stylero-tag-dot"></span>   <- colored tag swatches (0..N)
+ *     <span class="stylero-title-text">...    <- the display title (ellipsised)
+ *   </span>
+ */
+
+/* The cell is the positioning context for the absolute heat layer and lays
+ * its children out as a single horizontal row. */
+.stylero-title-cell {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0; /* allow the text child to shrink and ellipsise */
+  overflow: hidden;
+  padding-inline: 4px;
+}
+
+/* Reading-time heat: a full-bleed background painted behind everything else.
+ * Its background color (hsla with a computed alpha) is set inline in
+ * renderCell; here we only handle geometry and stacking. pointer-events:none
+ * keeps the native row click/selection behaviour intact. */
+.stylero-title-cell .stylero-heat {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+/* Everything that should sit ON TOP of the heat layer. */
+.stylero-title-cell .stylero-title-icon,
+.stylero-title-cell .stylero-tag-dot,
+.stylero-title-cell .stylero-title-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* File-type / attachment icon. Sized to match Zotero's own small icons and
+ * prevented from shrinking so the title text is what gives way under pressure. */
+.stylero-title-cell .stylero-title-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  -moz-context-properties: fill, fill-opacity, stroke;
+}
+
+/* Colored tag swatch: a small round dot tinted with the tag's stored color
+ * (set inline in renderCell). A faint border keeps light dots visible against
+ * a light row background and dark dots against a dark one. */
+.stylero-title-cell .stylero-tag-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* The title text itself: takes the remaining space and ellipsises. */
+.stylero-title-cell .stylero-title-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Odd/even striping. color-mix against currentColor keeps it readable and
+ * theme-aware in both light and dark modes without hard-coded colors. The
+ * stripe paints behind the text but the heat layer (when present) wins because
+ * it is a later child / opaque-ish; striping is intentionally subtle. */
+.stylero-title-cell.stylero-row-odd {
+  background-color: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.stylero-title-cell.stylero-row-even {
+  background-color: transparent;
+}
+
+/* Unread / bold support: bolds the whole cell (icon stays an image, only the
+ * text weight changes). Applied per the bold.scope pref in renderCell. */
+.stylero-title-cell.stylero-unread .stylero-title-text {
+  font-weight: 700;
+}

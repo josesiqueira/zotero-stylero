@@ -1,0 +1,38 @@
+/*
+ * Stylero - Collection count badges (feature 12)
+ * Muted pill appended at the end of each collection row in the collection tree.
+ * Injected as a <link> by CollectionCountsFactory.registerWindow.
+ */
+
+.stylero-collection-count {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.82em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  color: var(--fill-secondary, #6b6b6b);
+  background: var(--fill-quinary, rgba(0, 0, 0, 0.06));
+  vertical-align: baseline;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.stylero-collection-count.zero {
+  opacity: 0.45;
+}
+
+/* Keep the primary cell laying its content out in a row so the badge sits at
+   the end without clipping the collection name. */
+.collection-tree .row .cell.primary,
+.row .cell.label.primary {
+  display: flex;
+  align-items: center;
+}
+
+.row .cell.label.primary .cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

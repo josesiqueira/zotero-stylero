@@ -1,0 +1,8 @@
+/*
+ * readingTime.css — intentionally empty (Zotero Stylero, bucket A).
+ *
+ * The reading-time sampler renders no UI of its own; all heat/progress visuals
+ * are owned by the column buckets (Title-heat, Progress). No CSS <link> is
+ * required for bucket A. This file exists only so integration knows there is
+ * nothing to inject for the sampler feature.
+ */

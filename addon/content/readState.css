@@ -1,0 +1,55 @@
+/*
+ * Zotero Stylero - Read/Unread emphasis (Feature 19 + whole-row enhancement).
+ *
+ * Unread items are rendered bold. A hidden marker cell carries the attributes:
+ *   data-stylero-unread     -> the row is unread
+ *   data-stylero-wholerow   -> bold EVERY cell in the row (the user enhancement)
+ *
+ * Primary mechanism: CSS :has() keys off the marker cell so we never need a true
+ * per-row render hook. Fallback: ReadStateFactory toggles .stylero-unread /
+ * .stylero-unread-wholerow classes on the .row element via requestAnimationFrame,
+ * in case the row/cell nesting differs from what :has() expects.
+ *
+ * Firefox 140 (Zotero 9) supports :has(), so the primary rule is the normal path.
+ */
+
+/* Keep the marker column itself effectively invisible / minimal. */
+.stylero-readstate-cell {
+  width: 1px;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ---------- Primary path: :has() on the marker cell ---------- */
+
+/* Whole-row bold: every cell in a row that contains the wholerow marker. */
+.row:has(.stylero-readstate-cell[data-stylero-wholerow]) .cell {
+  font-weight: 700;
+}
+
+/*
+ * Title-only bold (wholeRow pref off): the row is unread but NOT flagged wholerow.
+ * Bold only the primary cell (the title column is the first cell / .primary).
+ */
+.row:has(
+    .stylero-readstate-cell[data-stylero-unread]:not([data-stylero-wholerow])
+  )
+  .cell.primary,
+.row:has(
+    .stylero-readstate-cell[data-stylero-unread]:not([data-stylero-wholerow])
+  )
+  .cell:first-child {
+  font-weight: 700;
+}
+
+/* ---------- Fallback path: class on the .row element ---------- */
+
+.row.stylero-unread-wholerow .cell {
+  font-weight: 700;
+}
+
+.row.stylero-unread:not(.stylero-unread-wholerow) .cell.primary,
+.row.stylero-unread:not(.stylero-unread-wholerow) .cell:first-child {
+  font-weight: 700;
+}

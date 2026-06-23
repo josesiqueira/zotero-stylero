@@ -37,7 +37,6 @@ pref("ratingColumn.allowClear", true);
 // Collection item counts (feature 12).
 pref("collectionCounts.enable", true);
 pref("collectionCounts.mode", "child");
-pref("collectionCounts.includeSubcollectionItems", false);
 
 // Progress column (feature 8) — off by default.
 pref("progressColumn.enable", false);

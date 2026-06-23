@@ -33,7 +33,6 @@ declare namespace _ZoteroTypes {
       "ratingColumn.allowClear": boolean;
       "collectionCounts.enable": boolean;
       "collectionCounts.mode": string;
-      "collectionCounts.includeSubcollectionItems": boolean;
       "progressColumn.enable": boolean;
       "progressColumn.style": string;
       "progressColumn.source": string;

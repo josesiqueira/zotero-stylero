@@ -235,7 +235,7 @@ export class ReadingTimeFactory {
    * onShutdown: clear all intervals/listeners, unregister the notifier, flush
    * every in-flight slice, and flush the ReadingStore to disk.
    */
-  static unregister(): void {
+  static async unregister(): Promise<void> {
     // Tear down every window (flushes slices + clears intervals/listeners).
     for (const win of Array.from(this.windowStates.keys())) {
       this.unregisterWindow(win as _ZoteroTypes.MainWindow);
@@ -253,8 +253,9 @@ export class ReadingTimeFactory {
 
     this.registered = false;
 
-    // Persist whatever is pending. Fire-and-forget; the store awaits internally.
-    void ReadingStore.flush();
+    // Persist whatever is pending. Awaited so debounced dwell is not lost; the
+    // integrator awaits this in onShutdown.
+    await ReadingStore.flush();
   }
 
   // ---- internals -----------------------------------------------------------
@@ -322,24 +323,28 @@ export class ReadingTimeFactory {
       return undefined;
     }
 
-    // Standalone reader window: match by reader._window === win.
-    try {
-      const readers: ReaderLike[] = reader._readers || [];
-      for (const r of readers) {
-        if (r && r._window && r._window === win) {
-          return r;
+    const tabs = (win as any).Zotero_Tabs;
+
+    // Standalone reader window (NOT a main window): match by reader._window ===
+    // win. On Z9 main-window reader tabs ALSO have _window === the main window,
+    // so this path must be skipped for main windows (which expose Zotero_Tabs)
+    // to avoid mis-attributing dwell to a background reader.
+    if (!tabs) {
+      try {
+        const readers: ReaderLike[] = reader._readers || [];
+        for (const r of readers) {
+          if (r && r._window && r._window === win) {
+            return r;
+          }
         }
+      } catch {
+        /* fall through */
       }
-    } catch {
-      /* fall through to tab-based resolution */
+      return undefined;
     }
 
     // Main window: only credit when the selected tab is a reader tab.
     try {
-      const tabs = (win as any).Zotero_Tabs;
-      if (!tabs) {
-        return undefined;
-      }
       if (tabs.selectedType !== "reader") {
         return undefined;
       }
@@ -510,6 +515,12 @@ export class ReadingTimeFactory {
    */
   private static flushSlice(st: WindowState): void {
     if (st.lastTickTs === undefined || !st.activeItemKey) {
+      return;
+    }
+    // Re-check the enable/idle gate: a gated-off feature must never credit, even
+    // on a blur/visibility transition. Drop the baseline so nothing is credited.
+    if (!this.isEnabled() || this.isIdle()) {
+      st.lastTickTs = undefined;
       return;
     }
     const now = Date.now();

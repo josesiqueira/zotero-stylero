@@ -22,6 +22,8 @@ export class ReadStateFactory {
 
   private static registered = false;
   private static notifierID: string | null = null;
+  /** Exact key returned by registerColumns; used for a guarded unregister. */
+  private static columnKey: string | false | null = null;
 
   /** Per-window injected <link> nodes. */
   private static readonly injectedLinks = new WeakMap<
@@ -44,13 +46,17 @@ export class ReadStateFactory {
       return;
     }
 
-    await Zotero.ItemTreeManager.registerColumns({
+    this.columnKey = await Zotero.ItemTreeManager.registerColumns({
       pluginID: addon.data.config.addonID,
       dataKey: ReadStateFactory.DATA_KEY,
       label: "Read state",
-      // Hidden / minimal column: zero-width marker. Provide a stable sortable value.
+      // Narrow unread indicator column. Shown by default (hidden: false) so its
+      // renderCell paints on every row, which is what drives the :has() whole-row
+      // bold; users can still hide it via the column picker.
+      hidden: false,
+      showInColumnPicker: true,
       fixedWidth: true,
-      width: "1",
+      width: "28",
       dataProvider: (item: Zotero.Item) => {
         return ReadStateFactory.isUnread(item) ? "1" : "0";
       },
@@ -61,7 +67,7 @@ export class ReadStateFactory {
         isFirstColumn: boolean,
         doc: Document,
       ) => {
-        return ReadStateFactory.renderMarkerCell(index, column, doc);
+        return ReadStateFactory.renderMarkerCell(data, column, doc);
       },
     } as any);
 
@@ -148,10 +154,14 @@ export class ReadStateFactory {
     }
     if (this.registered) {
       try {
-        Zotero.ItemTreeManager.unregisterColumns(ReadStateFactory.DATA_KEY);
+        // Use the exact key returned by registerColumns; removing an unknown
+        // option throws ("Can't remove unknown option").
+        const key = this.columnKey || ReadStateFactory.DATA_KEY;
+        Zotero.ItemTreeManager.unregisterColumns(key as string);
       } catch (e) {
         ztoolkit.log("[stylero] readState column unregister failed", e);
       }
+      this.columnKey = null;
       this.registered = false;
     }
   }
@@ -197,42 +207,33 @@ export class ReadStateFactory {
   // --------------------------------------------------------------------------
 
   private static renderMarkerCell(
-    index: number,
+    data: string,
     column: any,
     doc: Document,
   ): HTMLElement {
     const span = doc.createElement("span");
     span.className = `cell ${column?.className ?? ""} stylero-readstate-cell`;
 
-    const item = ReadStateFactory.resolveItem(index, doc);
-    const unread = item ? ReadStateFactory.isUnread(item) : false;
+    // The dataProvider already returns '1' for unread and '0' for read; use it
+    // directly rather than re-resolving the item via a fragile index/getRow lookup.
+    const unread = data === "1";
     const wholeRow = !!getPref("readState.wholeRow");
 
     // Idempotent attribute toggles (renderCell may run on recycled DOM).
     span.toggleAttribute("data-stylero-unread", unread);
     span.toggleAttribute("data-stylero-wholerow", unread && wholeRow);
 
+    // Centered dot glyph for unread, empty for read.
+    span.textContent = unread ? "●" : "";
+
     // Primary mechanism: the :has() CSS rule keys off this cell's attribute.
-    // Fallback: schedule a row-level class toggle once the cell is in the DOM,
-    // for robustness against Zotero changing the row/cell nesting.
-    if (typeof (doc.defaultView as any)?.requestAnimationFrame === "function") {
-      const raf = (doc.defaultView as any).requestAnimationFrame.bind(
-        doc.defaultView,
-      );
-      raf(() => {
-        const row = span.closest(".row");
-        if (!row) {
-          return;
-        }
-        row.classList.toggle("stylero-unread", unread);
-        row.classList.toggle("stylero-unread-wholerow", unread && wholeRow);
-      });
-    } else {
-      const row = span.closest(".row");
-      if (row) {
-        row.classList.toggle("stylero-unread", unread);
-        row.classList.toggle("stylero-unread-wholerow", unread && wholeRow);
-      }
+    // Fallback: toggle row-level classes synchronously (no rAF, which would
+    // accumulate closures on every cell paint) for robustness against Zotero
+    // changing the row/cell nesting.
+    const row = span.closest(".row");
+    if (row) {
+      row.classList.toggle("stylero-unread", unread);
+      row.classList.toggle("stylero-unread-wholerow", unread && wholeRow);
     }
 
     return span;
@@ -363,25 +364,6 @@ export class ReadStateFactory {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // Item resolution
-  // --------------------------------------------------------------------------
-
-  private static resolveItem(index: number, doc: Document): Zotero.Item | null {
-    try {
-      const win = (doc.defaultView ?? null) as any;
-      const pane =
-        (win && win.ZoteroPane) || ztoolkit.getGlobal("ZoteroPane");
-      const view = pane?.itemsView;
-      if (!view || typeof view.getRow !== "function") {
-        return null;
-      }
-      const ref = view.getRow(index)?.ref as Zotero.Item | undefined;
-      return ref ?? null;
-    } catch (e) {
-      return null;
-    }
-  }
 }
 
 export const PREFS: Record<string, string | number | boolean> = {

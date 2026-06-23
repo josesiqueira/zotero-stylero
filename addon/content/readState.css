@@ -1,23 +1,28 @@
 /*
  * Zotero Stylero - Read/Unread emphasis (Feature 19 + whole-row enhancement).
  *
- * Unread items are rendered bold. A hidden marker cell carries the attributes:
+ * Unread items are rendered bold. A narrow indicator cell shows a dot for unread
+ * rows and carries the attributes:
  *   data-stylero-unread     -> the row is unread
  *   data-stylero-wholerow   -> bold EVERY cell in the row (the user enhancement)
  *
  * Primary mechanism: CSS :has() keys off the marker cell so we never need a true
  * per-row render hook. Fallback: ReadStateFactory toggles .stylero-unread /
- * .stylero-unread-wholerow classes on the .row element via requestAnimationFrame,
- * in case the row/cell nesting differs from what :has() expects.
+ * .stylero-unread-wholerow classes on the .row element synchronously, in case the
+ * row/cell nesting differs from what :has() expects.
  *
  * Firefox 140 (Zotero 9) supports :has(), so the primary rule is the normal path.
  */
 
-/* Keep the marker column itself effectively invisible / minimal. */
+/* Narrow unread-indicator cell: centered dot, small but readable. */
 .stylero-readstate-cell {
-  width: 1px;
-  min-width: 0;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.7em;
+  line-height: 1;
+  color: var(--fill-secondary, #b00020);
   overflow: hidden;
 }
 

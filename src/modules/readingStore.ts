@@ -320,7 +320,11 @@ export const ReadingStore = {
     }
     const prev = data.pages[pageIndex] ?? 0;
     data.pages[pageIndex] = round1(prev + seconds);
-    data.total = round1(data.total + seconds);
+    let sum = 0;
+    for (const key in data.pages) {
+      sum += data.pages[key];
+    }
+    data.total = round1(sum);
     state.dirty = true;
     scheduleSave();
   },

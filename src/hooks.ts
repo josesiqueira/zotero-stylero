@@ -66,6 +66,7 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   CollectionCountsFactory.unregisterWindow(win);
   ReadingTimeFactory.unregisterWindow(win);
   TitleColumnFactory.unregisterWindow(win);
+  RatingColumnFactory.unregisterWindow(win);
   ProgressColumnFactory.unregisterWindow(win);
   ReadStateFactory.unregisterWindow(win);
   GraphViewFactory.unregisterWindow(win);
@@ -74,10 +75,23 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   addon.data.dialog?.window?.close();
 }
 
-function onShutdown(): void {
+async function onShutdown(): Promise<void> {
+  // Restore per-window patches/decorations on every open window first
+  // (CollectionCounts patches the collection-tree renderItem; leaving it in
+  // place would strand a dead closure). Do this before the global unregisters.
+  for (const win of Zotero.getMainWindows()) {
+    try {
+      CollectionCountsFactory.unregisterWindow(win);
+    } catch (e) {
+      ztoolkit.log("CollectionCounts.unregisterWindow failed", e);
+    }
+  }
+
   // Tear down everything that lives outside ztoolkit's registry.
   try {
-    ReadingTimeFactory.unregister();
+    // Awaited so the debounced reading-time data is flushed to disk before the
+    // JS context is torn down (plugin disable/uninstall/upgrade).
+    await ReadingTimeFactory.unregister();
   } catch (e) {
     ztoolkit.log("ReadingTimeFactory.unregister failed", e);
   }

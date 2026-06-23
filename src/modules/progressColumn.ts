@@ -42,6 +42,9 @@ export class ProgressColumnFactory {
   /** Tracks whether the column was actually registered (so unregister is a no-op otherwise). */
   private static registered = false;
 
+  /** Symbol returned by Zotero.Prefs.registerObserver, so we can unregister it manually. */
+  private static prefObserverID: symbol | null = null;
+
   /** Per-window injected <link> nodes, so we can remove exactly what we added. */
   private static readonly injectedLinks = new WeakMap<
     _ZoteroTypes.MainWindow,
@@ -55,8 +58,18 @@ export class ProgressColumnFactory {
    */
   private static readonly memo = new Map<
     number,
-    { version: number; source: ProgressSource; maxBuckets: number; data: ItemProgress }
+    {
+      version: number;
+      source: ProgressSource;
+      maxBuckets: number;
+      /** Reading-store fingerprint for reading/both sources (null for annotations-only). */
+      readingFp: number | null;
+      data: ItemProgress;
+    }
   >();
+
+  /** Hard cap on memo entries; oldest-inserted entries are evicted past this. */
+  private static readonly MEMO_MAX = 2000;
 
   /**
    * One-time global registration. No-op (and column NOT registered) when
@@ -90,6 +103,55 @@ export class ProgressColumnFactory {
     } as any);
 
     this.registered = true;
+
+    // Pref changes (style/source/color/normalize) don't bump item versions and the tree
+    // does not repaint on its own, so observe the relevant prefs and refresh manually.
+    // Not covered by ztoolkit, so we unregister this in unregister().
+    try {
+      const prefix = addon.data.config.prefsPrefix;
+      const watched = [
+        `${prefix}.progressColumn.style`,
+        `${prefix}.progressColumn.source`,
+        `${prefix}.progressColumn.color`,
+        `${prefix}.progressColumn.normalize`,
+      ];
+      this.prefObserverID = Zotero.Prefs.registerObserver(
+        `${prefix}.progressColumn`,
+        (name: string) => {
+          if (!watched.includes(name)) {
+            return;
+          }
+          ProgressColumnFactory.onRelevantPrefChange();
+        },
+        true,
+      );
+    } catch (e) {
+      ztoolkit.log("[stylero] progressColumn pref observer registration failed", e);
+    }
+  }
+
+  /**
+   * React to a relevant pref change: re-apply the color custom property (for color
+   * changes) and refresh the items view in every main window so cells repaint with the
+   * new style/source/normalize settings. Memos are cleared because source/maxBuckets
+   * changes alter cached distributions.
+   */
+  private static onRelevantPrefChange(): void {
+    this.memo.clear();
+    this.viewMaxCache = null;
+    for (const win of Zotero.getMainWindows()) {
+      try {
+        this.applyColorVar(win as _ZoteroTypes.MainWindow);
+        const view = (win as any)?.ZoteroPane?.itemsView;
+        if (view?.tree && typeof view.tree.invalidate === "function") {
+          view.tree.invalidate();
+        } else if (view && typeof view.refresh === "function") {
+          void view.refresh();
+        }
+      } catch (e) {
+        ztoolkit.log("[stylero] progressColumn pref refresh failed", e);
+      }
+    }
   }
 
   /** Per-window CSS injection. */
@@ -144,7 +206,17 @@ export class ProgressColumnFactory {
       }
       this.registered = false;
     }
+    // Manual cleanup of the pref observer (not covered by ztoolkit.unregisterAll).
+    if (this.prefObserverID !== null) {
+      try {
+        Zotero.Prefs.unregisterObserver(this.prefObserverID);
+      } catch (e) {
+        ztoolkit.log("[stylero] progressColumn pref observer unregister failed", e);
+      }
+      this.prefObserverID = null;
+    }
     this.memo.clear();
+    this.viewMaxCache = null;
   }
 
   // --------------------------------------------------------------------------
@@ -449,19 +521,34 @@ export class ProgressColumnFactory {
     }
     const id = item.id;
     const version = (item as any).version ?? 0;
+    // Reading-sourced charts depend on ReadingStore (which mutates without bumping
+    // the item version), so fold a reading fingerprint into the memo key and skip the
+    // version-only short-circuit for reading/both sources.
+    const usesReading = source === "reading" || source === "both";
+    const readingFp = usesReading
+      ? ProgressColumnFactory.readingFor(item)?.total ?? 0
+      : null;
     const cached = this.memo.get(id);
     if (
       cached &&
       cached.version === version &&
       cached.source === source &&
-      cached.maxBuckets === maxBuckets
+      cached.maxBuckets === maxBuckets &&
+      cached.readingFp === readingFp
     ) {
       return cached.data;
     }
 
     const data = ProgressColumnFactory.computeItemProgress(item, source, maxBuckets);
     if (data) {
-      this.memo.set(id, { version, source, maxBuckets, data });
+      // Bound the memo: evict the oldest-inserted entry once over the cap.
+      if (!this.memo.has(id) && this.memo.size >= this.MEMO_MAX) {
+        const oldest = this.memo.keys().next().value;
+        if (oldest !== undefined) {
+          this.memo.delete(oldest);
+        }
+      }
+      this.memo.set(id, { version, source, maxBuckets, readingFp, data });
     }
     return data;
   }
@@ -576,9 +663,29 @@ export class ProgressColumnFactory {
   }
 
   /**
+   * Render-pass cache for the "view" normalization max. computeViewMax can rescan up
+   * to 1000 rows, and renderCell runs once per painted cell, so without this every
+   * cell paint in a pass would repeat the full scan. The cached value is reused while
+   * the invalidation key (rowCount + source + maxBuckets) holds and a short time
+   * window has not elapsed; an rAF callback also clears it at the end of the pass.
+   */
+  private static viewMaxCache: {
+    key: string;
+    value: number;
+    at: number;
+  } | null = null;
+
+  /** Whether an rAF invalidation of viewMaxCache is already scheduled. */
+  private static viewMaxRafScheduled = false;
+
+  /** Max age (ms) for a cached view max before it is recomputed regardless of rAF. */
+  private static readonly VIEW_MAX_TTL = 250;
+
+  /**
    * Compute the max single-bucket value across all currently visible rows, for the
    * "view" normalization mode. Iterates the owning window's items view rows and reuses
-   * the per-item memo so this stays cheap.
+   * the per-item memo so this stays cheap. The result is memoized for the duration of a
+   * single render pass (see viewMaxCache) so it is not recomputed inside every cell.
    */
   private static computeViewMax(
     doc: Document,
@@ -597,6 +704,20 @@ export class ProgressColumnFactory {
         typeof view.rowCount === "number"
           ? view.rowCount
           : view._rows?.length || 0;
+
+      // Reuse the value for the rest of this render pass if the cheap invalidation key
+      // still matches and the short time window has not elapsed.
+      const key = `${rowCount}|${source}|${maxBuckets}`;
+      const now = Date.now();
+      const cache = ProgressColumnFactory.viewMaxCache;
+      if (
+        cache &&
+        cache.key === key &&
+        now - cache.at < ProgressColumnFactory.VIEW_MAX_TTL
+      ) {
+        return cache.value;
+      }
+
       let max = 0;
       const limit = Math.min(rowCount, 1000); // safety cap
       for (let i = 0; i < limit; i++) {
@@ -608,6 +729,20 @@ export class ProgressColumnFactory {
         if (prog && prog.itemMax > max) {
           max = prog.itemMax;
         }
+      }
+
+      ProgressColumnFactory.viewMaxCache = { key, value: max, at: now };
+      // Clear the cache at the end of the current frame so a fresh pass recomputes.
+      if (
+        !ProgressColumnFactory.viewMaxRafScheduled &&
+        win &&
+        typeof win.requestAnimationFrame === "function"
+      ) {
+        ProgressColumnFactory.viewMaxRafScheduled = true;
+        win.requestAnimationFrame(() => {
+          ProgressColumnFactory.viewMaxRafScheduled = false;
+          ProgressColumnFactory.viewMaxCache = null;
+        });
       }
       return max;
     } catch (e) {

@@ -20,7 +20,6 @@ import { getPref } from "../utils/prefs";
 export const PREFS: Record<string, string | number | boolean> = {
   "collectionCounts.enable": true,
   "collectionCounts.mode": "child",
-  "collectionCounts.includeSubcollectionItems": false,
 };
 
 const BADGE_CLASS = "stylero-collection-count";
@@ -46,6 +45,8 @@ export class CollectionCountsFactory {
   private static cache = new Map<number, { child: number; offspring: number }>();
   /** Windows we have patched, so unregister can restore them. */
   private static patchedWindows = new Set<_ZoteroTypes.MainWindow>();
+  /** Debounce timer for cache clear + tree invalidation on notify. */
+  private static invalidateTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ---- global registration (notifier) ----
 
@@ -66,8 +67,17 @@ export class CollectionCountsFactory {
         if (!addon?.data.alive) {
           return;
         }
-        this.cache.clear();
-        this.invalidateAllWindows();
+        if (this.invalidateTimer !== null) {
+          clearTimeout(this.invalidateTimer);
+        }
+        this.invalidateTimer = setTimeout(() => {
+          this.invalidateTimer = null;
+          if (!addon?.data.alive) {
+            return;
+          }
+          this.cache.clear();
+          this.invalidateAllWindows();
+        }, 250);
       },
     };
     this.notifierID = Zotero.Notifier.registerObserver(observer, [
@@ -81,6 +91,10 @@ export class CollectionCountsFactory {
     if (this.notifierID) {
       Zotero.Notifier.unregisterObserver(this.notifierID);
       this.notifierID = null;
+    }
+    if (this.invalidateTimer !== null) {
+      clearTimeout(this.invalidateTimer);
+      this.invalidateTimer = null;
     }
     this.cache.clear();
   }
@@ -114,6 +128,7 @@ export class CollectionCountsFactory {
       this.removeBadges(win);
       this.repaint(tree);
     }
+    win.document.getElementById("stylero-collectionCounts-css")?.remove();
     this.patchedWindows.delete(win);
   }
 
@@ -275,11 +290,7 @@ export class CollectionCountsFactory {
       ztoolkit.log("[Stylero] getChildItems failed", e);
     }
 
-    const mode = this.getMode();
-    let offspring = child;
-    if (mode !== "child") {
-      offspring = this.computeOffspring(collection);
-    }
+    const offspring = this.computeOffspring(collection);
 
     const result = { child, offspring };
     this.cache.set(id, result);

@@ -92,6 +92,12 @@ export class GraphViewFactory {
   };
 
   private static notifierID: string | null = null;
+  /** Guard so the View-menu item + shortcut register only once, not per window. */
+  private static commandRegistered = false;
+  /** Stored keyboard callback so it can be unregistered on plugin exit. */
+  private static keyboardCallback:
+    | ((ev: KeyboardEvent, opts: any) => void)
+    | null = null;
   private static states = new Map<_ZoteroTypes.MainWindow, WinState>();
   /** Re-entrancy guard so programmatic selection does not loop. */
   private static syncing = false;
@@ -128,7 +134,9 @@ export class GraphViewFactory {
     if (GraphViewFactory.states.has(win)) return;
 
     GraphViewFactory.injectCSS(win);
-    GraphViewFactory.registerCommand(win);
+    // Register the View-menu item + shortcut once, not per window. The
+    // handlers resolve the focused main window at call time.
+    GraphViewFactory.registerCommand();
 
     // Prepare lazy state; the heavy DOM/tab is created on first open.
     GraphViewFactory.states.set(win, GraphViewFactory.makeState(win));
@@ -145,6 +153,23 @@ export class GraphViewFactory {
     if (GraphViewFactory.notifierID) {
       Zotero.Notifier.unregisterObserver(GraphViewFactory.notifierID);
       GraphViewFactory.notifierID = null;
+    }
+    // Tear down the once-registered View-menu item + shortcut.
+    if (GraphViewFactory.commandRegistered) {
+      try {
+        ztoolkit.Menu.unregister("stylero-graphview-open");
+      } catch {
+        /* already removed */
+      }
+      if (GraphViewFactory.keyboardCallback) {
+        try {
+          ztoolkit.Keyboard.unregister(GraphViewFactory.keyboardCallback);
+        } catch {
+          /* already removed */
+        }
+        GraphViewFactory.keyboardCallback = null;
+      }
+      GraphViewFactory.commandRegistered = false;
     }
     for (const st of GraphViewFactory.states.values()) {
       GraphViewFactory.teardownState(st);
@@ -208,23 +233,34 @@ export class GraphViewFactory {
     doc.documentElement?.appendChild(link);
   }
 
-  private static registerCommand(win: _ZoteroTypes.MainWindow): void {
+  private static registerCommand(): void {
+    // Register only once: the menu item and shortcut are global, and the
+    // handlers resolve the active main window at call time so they do not
+    // leak/duplicate across windows.
+    if (GraphViewFactory.commandRegistered) return;
+    GraphViewFactory.commandRegistered = true;
+
     // View-menu item to open the graph tab.
     ztoolkit.Menu.register("menuView", {
       tag: "menuitem",
       id: "stylero-graphview-open",
       label: "Stylero: Graph View",
-      commandListener: () => GraphViewFactory.openTab(win),
+      commandListener: () => {
+        const win = Zotero.getMainWindow();
+        if (win) GraphViewFactory.openTab(win);
+      },
     });
 
     // Keyboard shortcut: Ctrl/Cmd+Alt+G to open the graph.
-    ztoolkit.Keyboard.register((ev, opts) => {
+    GraphViewFactory.keyboardCallback = (ev, opts) => {
       const accel = ev.ctrlKey || ev.metaKey;
       if (accel && ev.altKey && (ev.key === "g" || ev.key === "G")) {
-        GraphViewFactory.openTab(win);
+        const win = Zotero.getMainWindow();
+        if (win) GraphViewFactory.openTab(win);
       }
       void opts;
-    });
+    };
+    ztoolkit.Keyboard.register(GraphViewFactory.keyboardCallback);
   }
 
   // ---- Tab open / mount ----------------------------------------------
@@ -970,13 +1006,17 @@ export class GraphViewFactory {
   private static requestDraw(st: WinState): void {
     if (st.destroyed) return;
     if (st.rafHandle !== null) return; // a frame is already scheduled
-    st.win.requestAnimationFrame(() => GraphViewFactory.drawNow(st));
+    st.rafHandle = st.win.requestAnimationFrame(() => {
+      st.rafHandle = null;
+      GraphViewFactory.drawNow(st);
+    });
   }
 
   private static drawNow(st: WinState): void {
     if (st.destroyed || !st.renderer) return;
     if (GraphViewFactory.getMode() === "default") return;
-    delete (st.model as any).__byId;
+    // The renderer frame cache (model.__byId) is rebuilt in rebuild() on
+    // model change; do not delete it per frame or the cache is defeated.
     st.renderer.draw(st.model, st.view, st.selection, st.hover);
   }
 

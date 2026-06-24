@@ -1,5 +1,12 @@
 # Bucket C - implementation spec
 
+> **As-built note:** The Rating column shipped **tag-driven** (an all-`⭐` tag is the
+> source of truth), not Extra-field `rate: N` as described below, and there is no
+> hover preview. An **Unread column** (`.unread` tag dot) was also added (not in this
+> spec). Creator column and Collection counts match. Source of truth for the shipped
+> behavior: [`doc/FEATURES.md`](../FEATURES.md).
+
+
 ## Features
 - Creator column (feature 2): a custom item-tree column that reformats the author/creator list of each item using a configurable template string supporting ${firstName} ${lastName} ${firstCreator} placeholders, with optional slicing (first N / last N creators) and a custom join separator, all driven by prefs.
 - Rating column (feature 9): a custom item-tree column rendering an EndNote-style 5-star rating. The value (0 to 5) is parsed from the item's Extra field under the line 'rate: N'. Clicking a star in the cell writes the new rating back into Extra (preserving other Extra lines) via saveTx, then the cell repaints. Hover preview and clear-on-click-same-star.

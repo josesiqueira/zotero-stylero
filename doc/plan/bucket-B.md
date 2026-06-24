@@ -1,5 +1,11 @@
 # Bucket B - implementation spec
 
+> **STATUS: NOT SHIPPED.** This Title column (with reading-time "heat" background)
+> was specced but never built. No `titleColumn` module is registered and no
+> `titleColumn.*` prefs exist. The product has no title/row heat visualization. This
+> file is kept only as design history. See [`doc/FEATURES.md`](../FEATURES.md).
+
+
 ## Features
 - Custom registered item-tree column (dataKey stylero-title) that mirrors the native Title content but adds decorations, registered via Zotero.ItemTreeManager.registerColumns in static register()
 - Reading-time HEAT background painted behind the title text, intensity derived from ReadingStore total dwell normalized against the max total among currently visible rows

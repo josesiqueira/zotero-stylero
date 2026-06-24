@@ -1,5 +1,9 @@
 # Bucket E - implementation spec
 
+> **As-built note:** Shipped as designed (dependency-free Canvas2D graph). See
+> [`doc/FEATURES.md`](../FEATURES.md) for the user-facing summary.
+
+
 ## Features
 - Graph View (feature 18): Obsidian-style force-directed knowledge graph rendered to a 2D canvas with a hand-rolled velocity-Verlet force simulation (no PIXI, no d3-force, zero new runtime deps).
 - Four modes via a header dropdown/segmented control: 'related' (Zotero relateditem links), 'author' (co-authorship edges), 'tag' (shared-tag edges), and 'default' (a help/splash panel explaining the modes and showing a quick-start).

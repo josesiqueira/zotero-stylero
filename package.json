@@ -2,7 +2,7 @@
   "name": "zotero-stylero",
   "type": "module",
   "version": "0.0.1",
-  "description": "A clean Zotero 9 plugin bringing styled item-table columns, reading-time heat, progress bars, ratings, collection counts, a knowledge graph, and read/unread emphasis.",
+  "description": "A lightweight, dependency-free Zotero 9 plugin: styled item-table columns, collection counts, reading-time tracking, read/unread emphasis, a knowledge-graph view, and a light/dark toggle.",
   "config": {
     "addonName": "Zotero Stylero",
     "addonID": "zotero-stylero@jose.local",

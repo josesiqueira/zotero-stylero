@@ -1,5 +1,10 @@
 # Bucket A - implementation spec
 
+> **As-built note:** Shipped as designed (reading-time sampler + store), except its
+> only consumer is the Progress column. The "Title heat" consumer was dropped, so the
+> `getMaxTotalInView` accessor is currently unused. See [`doc/FEATURES.md`](../FEATURES.md).
+
+
 ## Features
 - Focus-gated reading-time sampler (feature 16): while a reader tab is the active, focused tab, sample the current page every ~10s and accrue per-page dwell seconds for the reader's attachment item.
 - 60s hang guard: if more than ~60s elapses between two consecutive sample ticks (machine sleep, debugger pause, long stall), discard that interval instead of crediting a huge dwell to the current page.

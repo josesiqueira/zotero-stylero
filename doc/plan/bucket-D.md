@@ -1,5 +1,12 @@
 # Bucket D - implementation spec
 
+> **As-built note:** Shipped as designed, with two clarifications. The Progress column
+> is **off by default** (opt-in). Read/unread emphasis shipped via row-decorator CSS
+> classes (not a hidden marker column with `:has()`); out of the box it bolds unread
+> **feed** items, and the "apply to all items" mode has no read-marking UI. See
+> [`doc/FEATURES.md`](../FEATURES.md).
+
+
 ## Features
 - Feature 8: Progress column - per-page annotation distribution for an item's PDF attachments, drawn in renderCell as a compact inline bar chart by default, with optional line / opacity-heat / stacked styles selectable via a style pref. Bars are normalized per-item (default) or globally across the visible view.
 - Feature 8 (data source 2): the same column can reflect ReadingStore dwell distribution per page instead of (or blended with) annotation counts, selected by a source pref (annotations | reading | both).

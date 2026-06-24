@@ -18,3 +18,6 @@ node_modules
 .scaffold
 .env
 *.xpi
+
+# TSC test buildinfo
+tsconfig.tests.tmp.tsbuildinfo

@@ -1,0 +1,19 @@
+/* Zotero Stylero - Rating column: normalized 5-slot interactive stars. */
+.stylero-rating-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.stylero-rating-star {
+  cursor: pointer;
+  color: #e6b800;
+  font-size: 0.95em;
+  line-height: 1;
+  user-select: none;
+}
+
+.stylero-rating-star:hover {
+  opacity: 0.75;
+}

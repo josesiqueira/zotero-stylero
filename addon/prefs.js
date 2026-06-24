@@ -28,6 +28,15 @@ pref("creatorColumn.join", "; ");
 pref("creatorColumn.slice", "0");
 pref("creatorColumn.ellipsis", " et al.");
 
+// Unread column (tag-driven: shows a dot for the .unread tag).
+pref("unreadColumn.enable", true);
+pref("unreadColumn.tag", ".unread");
+
+// Rating column (tag-driven: normalized stars from an all-⭐ tag).
+pref("ratingColumn.enable", true);
+pref("ratingColumn.max", 5);
+pref("ratingColumn.hideFromTitle", true);
+
 // Collection item counts (feature 12).
 pref("collectionCounts.enable", true);
 pref("collectionCounts.mode", "child");

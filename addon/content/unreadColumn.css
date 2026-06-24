@@ -1,0 +1,10 @@
+/* Zotero Stylero - Unread column: centered dot for items tagged .unread. */
+.stylero-unread-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  font-size: 0.85em;
+  color: var(--accent-blue, #2e7dd1);
+}

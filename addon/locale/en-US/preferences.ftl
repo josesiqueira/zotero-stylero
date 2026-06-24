@@ -17,6 +17,12 @@ pref-creatorColumn-template = Template
 pref-progressColumn-enable =
     .label = Progress column (annotation / reading distribution)
 pref-progressColumn-style = Style
+pref-unreadColumn-enable =
+    .label = Unread column (dot for the .unread tag)
+pref-ratingColumn-enable =
+    .label = Rating column (interactive stars, from an all-⭐ tag)
+pref-ratingColumn-hide =
+    .label = Hide the star tag from the title
 
 pref-group-tree = Collections & state
 pref-collectionCounts-enable =

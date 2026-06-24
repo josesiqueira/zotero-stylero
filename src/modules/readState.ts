@@ -1,59 +1,40 @@
 import { getPref, setPref } from "../utils/prefs";
+import { ItemRowDecorator, RowDecorator } from "./itemRowDecorator";
 
 /**
  * Feature 19 + whole-row enhancement - Read / Unread emphasis.
  *
- * Mirrors Zotero's feed read state (item.isRead): unread feed items are rendered
- * bold, read items normal. The USER ENHANCEMENT bolds EVERY cell in an unread row.
- *
- * Implementation: instead of a dedicated column (which Zotero pins as an awkward
- * sliver at the far-right edge), we patch the item tree's per-row renderer
- * (`itemsView.tree.props.renderItem`, verified wrappable on Zotero 9.0.4) and
- * toggle `.stylero-unread` / `.stylero-unread-wholerow` classes on the `.row`
- * element. A CSS rule then bolds the primary cell or the whole row. No column,
- * nothing hidden off-screen.
- *
- * With `readState.boldAllItems` on, the emphasis extends to all regular items: an
- * item is treated as unread (bold) unless explicitly marked read. Regular items
- * have no native read state, so "read" is tracked in a minimal JSON side-store of
- * item keys (writes guarded by item.library.editable). Defaults off.
+ * Unread feed items (item.isRead === false) are rendered bold; with
+ * `readState.boldAllItems` on, all regular items are bold unless marked read in a
+ * minimal JSON side-store of item keys. The bold is applied by toggling
+ * `.stylero-unread` / `.stylero-unread-wholerow` classes on the row via the shared
+ * ItemRowDecorator (no column, nothing pinned to the far-right edge); a CSS rule
+ * then bolds the primary cell or the whole row.
  */
-
-const PATCH_FLAG = "__styleroReadStatePatched";
-
-type RenderItemFn = ((...args: any[]) => any) & { [PATCH_FLAG]?: boolean };
-
-interface ItemsViewLike {
-  rowCount?: number;
-  getRow?: (index: number) => { ref?: any } | undefined;
-  _renderItem?: RenderItemFn;
-  tree?: {
-    props?: { renderItem?: RenderItemFn };
-    invalidate?: () => void;
-    invalidateRange?: (start: number, end: number) => void;
-  };
-}
 
 export class ReadStateFactory {
   private static registered = false;
   private static notifierID: string | null = null;
+  private static prefObserverIDs: symbol[] = [];
+  private static readSet: Set<string> | null = null;
 
-  /** Per-window injected <link> nodes. */
+  /** Stable decorator reference so we can add/remove it. */
+  private static readonly decorator: RowDecorator = (view, index, node) => {
+    if (!node || !node.classList || typeof view.getRow !== "function") {
+      return;
+    }
+    const item = view.getRow(index)?.ref as Zotero.Item | undefined;
+    const unread = item ? ReadStateFactory.isUnread(item) : false;
+    const wholeRow = unread && !!getPref("readState.wholeRow");
+    node.classList.toggle("stylero-unread", unread);
+    node.classList.toggle("stylero-unread-wholerow", wholeRow);
+  };
+
   private static readonly injectedLinks = new WeakMap<
     _ZoteroTypes.MainWindow,
     HTMLLinkElement
   >();
 
-  /** Per-window patch record, for restoration on teardown. */
-  private static readonly originals = new WeakMap<
-    _ZoteroTypes.MainWindow,
-    { view: ItemsViewLike; original: RenderItemFn; props: any }
-  >();
-
-  /** In-memory cache of the regular-item "read" side-store (Set of item keys). */
-  private static readSet: Set<string> | null = null;
-
-  /** One-time global registration: the read-state-change notifier. */
   static async register(): Promise<void> {
     if (this.registered) {
       return;
@@ -63,16 +44,13 @@ export class ReadStateFactory {
     }
 
     const callback = {
-      notify: (
-        event: string,
-        type: string,
-        ids: Array<number | string>,
-        _extraData: { [key: string]: any },
-      ) => {
+      notify: (event: string) => {
         if (!addon?.data.alive) {
           return;
         }
-        ReadStateFactory.onReadStateNotify(event, type, ids);
+        if (event === "modify" || event === "add" || event === "refresh") {
+          ItemRowDecorator.repaintAll();
+        }
       },
     };
     try {
@@ -94,38 +72,36 @@ export class ReadStateFactory {
     }
 
     this.registerPrefObserver();
+    ItemRowDecorator.add(this.decorator);
     this.registered = true;
   }
 
-  /** Per-window: inject CSS and patch the item-tree row renderer. */
   static registerWindow(win: _ZoteroTypes.MainWindow): void {
     if (!getPref("readState.enable")) {
       return;
     }
     this.injectCss(win);
-    this.ensurePatchedWithRetry(win);
   }
 
   static unregisterWindow(win: _ZoteroTypes.MainWindow): void {
-    this.unpatch(win);
     const link = this.injectedLinks.get(win);
     if (link) {
       link.remove();
       this.injectedLinks.delete(win);
     }
-    // Drop any lingering classes, then repaint with the original renderer.
     try {
       win.document
         ?.querySelectorAll(".row.stylero-unread, .row.stylero-unread-wholerow")
-        .forEach((r: Element) => {
-          r.classList.remove("stylero-unread", "stylero-unread-wholerow");
-        });
+        .forEach((r: Element) =>
+          r.classList.remove("stylero-unread", "stylero-unread-wholerow"),
+        );
     } catch (e) {
       ztoolkit.log("[stylero] readState class cleanup failed", e);
     }
   }
 
   static unregister(): void {
+    ItemRowDecorator.remove(this.decorator);
     if (this.notifierID) {
       try {
         Zotero.Notifier.unregisterObserver(this.notifierID);
@@ -145,108 +121,14 @@ export class ReadStateFactory {
     this.registered = false;
   }
 
-  // --------------------------------------------------------------------------
-  // Item-tree row-renderer patch
-  // --------------------------------------------------------------------------
-
-  private static getItemsView(
-    win: _ZoteroTypes.MainWindow,
-  ): ItemsViewLike | undefined {
-    try {
-      return (win as any).ZoteroPane?.itemsView as ItemsViewLike | undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
-   * Patch the row renderer if not already patched. Returns true when our wrapper
-   * is in place (newly applied or already present from this/a prior generation),
-   * false when the item tree is not ready yet. React may recreate props, so this
-   * is also used to re-assert the patch.
-   */
-  private static ensurePatched(win: _ZoteroTypes.MainWindow): boolean {
-    const view = this.getItemsView(win);
-    const props = view?.tree?.props;
-    // The instance method `_renderItem` is the durable anchor: on every ItemTree
-    // re-render, `props.renderItem` is re-assigned from `this._renderItem`, so a
-    // props-only wrap is dropped. We wrap the instance method (future renders)
-    // AND the current props.renderItem (this frame).
-    if (
-      !view ||
-      !props ||
-      typeof view._renderItem !== "function" ||
-      typeof props.renderItem !== "function"
-    ) {
-      return false; // tree not ready yet
-    }
-    if ((view._renderItem as RenderItemFn)[PATCH_FLAG]) {
-      // Already wrapped at the instance level; make sure the current props frame
-      // points at it too (it will after the next render regardless).
-      if (!(props.renderItem as RenderItemFn)[PATCH_FLAG]) {
-        props.renderItem = view._renderItem;
-      }
-      return true;
-    }
-
-    const original = view._renderItem as RenderItemFn;
-    const wrapper = function (this: any, ...args: any[]) {
-      const node = original.apply(this, args);
-      try {
-        ReadStateFactory.decorateRow(view, args[0] as number, node);
-      } catch (e) {
-        ztoolkit.log("[stylero] readState decorateRow failed", e);
-      }
-      return node;
-    } as RenderItemFn;
-    wrapper[PATCH_FLAG] = true;
-
-    view._renderItem = wrapper;
-    props.renderItem = wrapper;
-    this.originals.set(win, { view, original, props });
-    return true;
-  }
-
-  /**
-   * Patch now; if the item tree is not yet constructed (startup race), retry a
-   * few times before giving up.
-   */
-  private static ensurePatchedWithRetry(
-    win: _ZoteroTypes.MainWindow,
-    attempts = 6,
-  ): void {
-    if (this.ensurePatched(win)) {
-      this.repaint(win);
-      return;
-    }
-    if (attempts <= 0) {
-      return;
-    }
-    try {
-      win.setTimeout(() => {
-        if (addon?.data.alive) {
-          this.ensurePatchedWithRetry(win, attempts - 1);
-        }
-      }, 300);
-    } catch (e) {
-      ztoolkit.log("[stylero] readState patch retry scheduling failed", e);
-    }
-  }
-
-  private static prefObserverIDs: symbol[] = [];
-
   private static registerPrefObserver(): void {
     if (this.prefObserverIDs.length) {
       return;
     }
     const prefix = addon.data.config.prefsPrefix;
     const handler = () => {
-      if (!addon?.data.alive) {
-        return;
-      }
-      for (const win of Zotero.getMainWindows()) {
-        this.ensurePatched(win as _ZoteroTypes.MainWindow);
-        this.repaint(win as _ZoteroTypes.MainWindow);
+      if (addon?.data.alive) {
+        ItemRowDecorator.repaintAll();
       }
     };
     for (const key of [
@@ -264,86 +146,6 @@ export class ReadStateFactory {
     }
   }
 
-  private static unpatch(win: _ZoteroTypes.MainWindow): void {
-    const saved = this.originals.get(win);
-    if (!saved) {
-      return;
-    }
-    try {
-      if ((saved.view._renderItem as RenderItemFn)?.[PATCH_FLAG]) {
-        saved.view._renderItem = saved.original;
-      }
-      if (saved.props && (saved.props.renderItem as RenderItemFn)?.[PATCH_FLAG]) {
-        saved.props.renderItem = saved.original;
-      }
-    } catch (e) {
-      ztoolkit.log("[stylero] readState unpatch failed", e);
-    }
-    this.originals.delete(win);
-    this.repaint(win);
-  }
-
-  private static decorateRow(
-    view: ItemsViewLike,
-    index: number,
-    node: any,
-  ): void {
-    if (!node || !node.classList || typeof view.getRow !== "function") {
-      return;
-    }
-    const item = view.getRow(index)?.ref as Zotero.Item | undefined;
-    const unread = item ? ReadStateFactory.isUnread(item) : false;
-    const wholeRow = unread && !!getPref("readState.wholeRow");
-    // Idempotent: recycled rows get corrected on every paint.
-    node.classList.toggle("stylero-unread", unread);
-    node.classList.toggle("stylero-unread-wholerow", wholeRow);
-  }
-
-  private static repaint(win: _ZoteroTypes.MainWindow): void {
-    const view = this.getItemsView(win);
-    const tree = view?.tree;
-    const rowCount = typeof view?.rowCount === "number" ? view.rowCount : 0;
-    try {
-      // invalidateRange re-runs renderItem (plain invalidate only repaints DOM).
-      if (tree && typeof tree.invalidateRange === "function" && rowCount > 0) {
-        tree.invalidateRange(0, rowCount - 1);
-      } else if (tree && typeof tree.invalidate === "function") {
-        tree.invalidate();
-      }
-    } catch (e) {
-      ztoolkit.log("[stylero] readState repaint failed", e);
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // Notifier handling -> re-assert patch + repaint
-  // --------------------------------------------------------------------------
-
-  private static onReadStateNotify(
-    event: string,
-    _type: string,
-    _ids: Array<number | string>,
-  ): void {
-    if (event !== "modify" && event !== "add" && event !== "refresh") {
-      return;
-    }
-    for (const win of Zotero.getMainWindows()) {
-      // Re-assert in case React recreated the tree props since last paint.
-      this.ensurePatched(win as _ZoteroTypes.MainWindow);
-      this.repaint(win as _ZoteroTypes.MainWindow);
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // Read-state logic
-  // --------------------------------------------------------------------------
-
-  /**
-   * Whether an item should carry the unread (bold) emphasis.
-   * - Feed items: native item.isRead (false => unread => bold).
-   * - Regular items: only when boldAllItems is on; unread unless explicitly marked
-   *   read in the side-store.
-   */
   private static isUnread(item: Zotero.Item): boolean {
     if (!item) {
       return false;
@@ -367,10 +169,6 @@ export class ReadStateFactory {
     }
     return false;
   }
-
-  // --------------------------------------------------------------------------
-  // Marking regular items read/unread (boldAllItems mode)
-  // --------------------------------------------------------------------------
 
   static markRead(item: Zotero.Item, read: boolean): void {
     if (!item || (item as any).isFeedItem) {

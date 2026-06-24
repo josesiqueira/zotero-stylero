@@ -27,6 +27,11 @@ declare namespace _ZoteroTypes {
       "creatorColumn.join": string;
       "creatorColumn.slice": string;
       "creatorColumn.ellipsis": string;
+      "unreadColumn.enable": boolean;
+      "unreadColumn.tag": string;
+      "ratingColumn.enable": boolean;
+      "ratingColumn.max": number;
+      "ratingColumn.hideFromTitle": boolean;
       "collectionCounts.enable": boolean;
       "collectionCounts.mode": string;
       "progressColumn.enable": boolean;

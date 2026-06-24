@@ -7,6 +7,9 @@ import { CreatorColumnFactory } from "./modules/creatorColumn";
 import { CollectionCountsFactory } from "./modules/collectionCounts";
 import { ProgressColumnFactory } from "./modules/progressColumn";
 import { ReadStateFactory } from "./modules/readState";
+import { UnreadColumnFactory } from "./modules/unreadColumn";
+import { RatingColumnFactory } from "./modules/ratingColumn";
+import { ItemRowDecorator } from "./modules/itemRowDecorator";
 import { GraphViewFactory } from "./modules/graphView";
 
 async function onStartup() {
@@ -27,6 +30,8 @@ async function onStartup() {
   await TitleColumnFactory.register();
   await CreatorColumnFactory.register();
   await ProgressColumnFactory.register();
+  await UnreadColumnFactory.register();
+  await RatingColumnFactory.register();
 
   // Tree / state decorations.
   CollectionCountsFactory.register();
@@ -48,11 +53,16 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   // Create ztoolkit for every window
   addon.data.ztoolkit = createZToolkit();
 
+  // Shared item-row renderer patch (used by read-state bold + rating title-strip).
+  ItemRowDecorator.registerWindow(win);
+
   ReadingTimeFactory.registerWindow(win);
   TitleColumnFactory.registerWindow(win);
   ProgressColumnFactory.registerWindow(win);
   CollectionCountsFactory.registerWindow(win);
   ReadStateFactory.registerWindow(win);
+  UnreadColumnFactory.registerWindow(win);
+  RatingColumnFactory.registerWindow(win);
   GraphViewFactory.registerWindow(win);
 }
 
@@ -65,7 +75,10 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   TitleColumnFactory.unregisterWindow(win);
   ProgressColumnFactory.unregisterWindow(win);
   ReadStateFactory.unregisterWindow(win);
+  UnreadColumnFactory.unregisterWindow(win);
+  RatingColumnFactory.unregisterWindow(win);
   GraphViewFactory.unregisterWindow(win);
+  ItemRowDecorator.unregisterWindow(win);
 
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
@@ -78,8 +91,12 @@ async function onShutdown(): Promise<void> {
   for (const win of Zotero.getMainWindows()) {
     try {
       CollectionCountsFactory.unregisterWindow(win);
+      // Restore the shared row-renderer patch so an upgrade/reload doesn't strand
+      // a previous-generation wrapper (onMainWindowUnload doesn't fire on reload).
+      ItemRowDecorator.unregisterWindow(win);
+      RatingColumnFactory.unregisterWindow(win);
     } catch (e) {
-      ztoolkit.log("CollectionCounts.unregisterWindow failed", e);
+      ztoolkit.log("per-window shutdown cleanup failed", e);
     }
   }
 
@@ -94,6 +111,8 @@ async function onShutdown(): Promise<void> {
   void TitleColumnFactory.unregister();
   CreatorColumnFactory.unregister();
   ProgressColumnFactory.unregister();
+  UnreadColumnFactory.unregister();
+  RatingColumnFactory.unregister();
   CollectionCountsFactory.unregister();
   ReadStateFactory.unregister();
   GraphViewFactory.unregister();

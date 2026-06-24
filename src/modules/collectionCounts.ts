@@ -1,20 +1,28 @@
-import { getPref } from "../utils/prefs";
+import { getPref, setPref } from "../utils/prefs";
 
 /**
  * Bucket C - Feature 12: Collection item-count badges.
  *
- * Non-destructively decorates each collection row in the collection tree with a
- * muted pill showing how many items it holds. Four counting modes:
- *   - 'child'       : direct items only
- *   - 'offspring'   : this collection + all descendants, item ids deduped
- *   - 'both'        : "child / offspring"
- *   - 'bothReverse' : "offspring / child"
+ * Non-destructively decorates rows in the collection tree with a muted pill
+ * showing how many items they hold.
+ *
+ * - Real collections use four counting modes (child / offspring / both /
+ *   bothReverse), computed synchronously from getChildItems.
+ * - Every other countable row (My Library + group library roots, saved searches,
+ *   My Publications, Duplicate Items, Unfiled Items, Bin/Trash, Recently Read,
+ *   etc.) shows a single count of the items it contains, computed asynchronously
+ *   via the row's own getItems() and cached by the row's stable string id.
+ * - Headers ("Group Libraries") and separators get no badge.
  *
  * Implementation: wrap the CollectionTree instance's per-row `renderItem`
- * function (verified against Zotero 9.0.4: it returns a `div.row` and is held
- * both on the instance and in `tree.props.renderItem`). The wrapper is stamped
- * idempotent and reversible. A Notifier observer clears the count cache and
- * invalidates the tree on collection/item changes.
+ * function (verified on Zotero 9.0.4: it returns a `div.row` and is held both on
+ * the instance and in `tree.props.renderItem`). The wrapper is idempotent and
+ * reversible. A Notifier observer clears the caches and repaints on changes.
+ *
+ * A "Show item counts" checkbox in the View menu and a preferences toggle both
+ * flip `collectionCounts.enable`; a pref observer repaints live and keeps the
+ * menu checkbox in sync. The tree is always patched (cheap when disabled) so the
+ * toggle works without a reload; drawing is gated on the pref in decorateRow.
  */
 
 export const PREFS: Record<string, string | number | boolean> = {
@@ -25,17 +33,21 @@ export const PREFS: Record<string, string | number | boolean> = {
 const BADGE_CLASS = "stylero-collection-count";
 const PATCH_FLAG = "__styleroCountsPatched";
 const ORIGINAL_KEY = "__styleroCountsOriginal";
+const TOGGLE_ID = "stylero-counts-toggle";
+const ENABLE_PREF = "collectionCounts.enable";
 
 type CountMode = "child" | "offspring" | "both" | "bothReverse";
 
 interface PatchableTree {
+  rowCount?: number;
   renderItem?: ((...args: any[]) => any) & { [PATCH_FLAG]?: boolean };
   [ORIGINAL_KEY]?: (...args: any[]) => any;
   tree?: {
     props?: { renderItem?: (...args: any[]) => any };
     invalidate?: () => void;
+    invalidateRange?: (start: number, end: number) => void;
   };
-  getRow?: (index: number) => { ref?: any } | undefined;
+  getRow?: (index: number) => any;
   refresh?: () => void;
 }
 
@@ -43,48 +55,60 @@ export class CollectionCountsFactory {
   private static notifierID: string | null = null;
   /** Per-collection-id cached counts; invalidated on notify. */
   private static cache = new Map<number, { child: number; offspring: number }>();
+  /** Per-row-id cached counts for non-collection rows (library/search/...). */
+  private static genericCache = new Map<string, number>();
+  /** Row ids whose async count is in flight, so we compute each only once. */
+  private static pendingGeneric = new Set<string>();
   /** Windows we have patched, so unregister can restore them. */
   private static patchedWindows = new Set<_ZoteroTypes.MainWindow>();
   /** Debounce timer for cache clear + tree invalidation on notify. */
   private static invalidateTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Debounce timer for repaints triggered by async generic counts resolving. */
+  private static genericRepaintTimer: ReturnType<typeof setTimeout> | null =
+    null;
+  private static viewMenuRegistered = false;
+  private static prefObserverIDs: symbol[] = [];
 
-  // ---- global registration (notifier) ----
+  // ---- global registration ----
 
   static register(): void {
-    if (!getPref("collectionCounts.enable")) {
-      return;
-    }
-    if (this.notifierID) {
-      return;
-    }
-    const observer = {
-      notify: (
-        _event: string,
-        _type: string,
-        _ids: Array<string | number>,
-        _extraData: { [key: string]: any },
-      ) => {
-        if (!addon?.data.alive) {
-          return;
-        }
-        if (this.invalidateTimer !== null) {
-          clearTimeout(this.invalidateTimer);
-        }
-        this.invalidateTimer = setTimeout(() => {
-          this.invalidateTimer = null;
+    // Always wire up (even when disabled) so the View-menu toggle works live;
+    // drawing is gated on the pref inside decorateRow.
+    if (!this.notifierID) {
+      const observer = {
+        notify: (
+          _event: string,
+          _type: string,
+          _ids: Array<string | number>,
+          _extraData: { [key: string]: any },
+        ) => {
           if (!addon?.data.alive) {
             return;
           }
-          this.cache.clear();
-          this.invalidateAllWindows();
-        }, 250);
-      },
-    };
-    this.notifierID = Zotero.Notifier.registerObserver(observer, [
-      "collection",
-      "item",
-      "collection-item",
-    ]);
+          if (this.invalidateTimer !== null) {
+            clearTimeout(this.invalidateTimer);
+          }
+          this.invalidateTimer = setTimeout(() => {
+            this.invalidateTimer = null;
+            if (!addon?.data.alive) {
+              return;
+            }
+            this.cache.clear();
+            this.genericCache.clear();
+            this.invalidateAllWindows();
+          }, 250);
+        },
+      };
+      this.notifierID = Zotero.Notifier.registerObserver(observer, [
+        "collection",
+        "item",
+        "collection-item",
+        "search",
+      ]);
+    }
+
+    this.registerViewMenuToggle();
+    this.registerPrefObserver();
   }
 
   static unregister(): void {
@@ -96,29 +120,40 @@ export class CollectionCountsFactory {
       clearTimeout(this.invalidateTimer);
       this.invalidateTimer = null;
     }
+    if (this.genericRepaintTimer !== null) {
+      clearTimeout(this.genericRepaintTimer);
+      this.genericRepaintTimer = null;
+    }
+    for (const id of this.prefObserverIDs) {
+      try {
+        Zotero.Prefs.unregisterObserver(id);
+      } catch (e) {
+        ztoolkit.log("[Stylero] counts pref observer unregister failed", e);
+      }
+    }
+    this.prefObserverIDs = [];
     this.cache.clear();
+    this.genericCache.clear();
+    this.pendingGeneric.clear();
   }
 
   // ---- per-window patching ----
 
   static registerWindow(win: _ZoteroTypes.MainWindow): void {
-    if (!getPref("collectionCounts.enable")) {
-      return;
-    }
     this.injectCss(win);
 
     const tree = this.getCollectionTree(win);
-    if (!tree) {
-      return;
+    if (tree) {
+      try {
+        this.patchTree(tree);
+        this.patchedWindows.add(win);
+        this.repaint(tree);
+      } catch (e) {
+        ztoolkit.log("[Stylero] collectionCounts patch failed", e);
+      }
     }
-
-    try {
-      this.patchTree(tree);
-      this.patchedWindows.add(win);
-      this.repaint(tree);
-    } catch (e) {
-      ztoolkit.log("[Stylero] collectionCounts patch failed", e);
-    }
+    // Ensure this window's View-menu checkbox reflects the current pref.
+    this.syncToggleUI(win);
   }
 
   static unregisterWindow(win: _ZoteroTypes.MainWindow): void {
@@ -130,6 +165,78 @@ export class CollectionCountsFactory {
     }
     win.document.getElementById("stylero-collectionCounts-css")?.remove();
     this.patchedWindows.delete(win);
+  }
+
+  // ---- View-menu checkbox + pref observer ----
+
+  private static registerViewMenuToggle(): void {
+    if (this.viewMenuRegistered) {
+      return;
+    }
+    this.viewMenuRegistered = true;
+    try {
+      ztoolkit.Menu.register("menuView", {
+        tag: "menuitem",
+        id: TOGGLE_ID,
+        label: "Show item counts",
+        commandListener: () => {
+          // Flip the pref; the pref observer repaints and re-syncs the checkbox.
+          setPref(ENABLE_PREF, !getPref(ENABLE_PREF));
+        },
+      });
+    } catch (e) {
+      ztoolkit.log("[Stylero] view-menu toggle registration failed", e);
+    }
+  }
+
+  private static registerPrefObserver(): void {
+    if (this.prefObserverIDs.length) {
+      return;
+    }
+    const prefix = addon.data.config.prefsPrefix;
+    // Zotero pref observers are exact-name match, so observe each concrete key
+    // (the full path with global=true), not the parent branch.
+    const handler = () => {
+      if (!addon?.data.alive) {
+        return;
+      }
+      this.cache.clear();
+      this.genericCache.clear();
+      this.invalidateAllWindows();
+      this.syncToggleUI();
+    };
+    for (const key of [
+      `${prefix}.collectionCounts.enable`,
+      `${prefix}.collectionCounts.mode`,
+    ]) {
+      try {
+        this.prefObserverIDs.push(
+          Zotero.Prefs.registerObserver(key, handler, true),
+        );
+      } catch (e) {
+        ztoolkit.log("[Stylero] counts pref observer registration failed", e);
+      }
+    }
+  }
+
+  /** Make the View-menu checkbox a real checkbox and reflect the current pref. */
+  private static syncToggleUI(win?: _ZoteroTypes.MainWindow): void {
+    const enabled = !!getPref(ENABLE_PREF);
+    const wins = win ? [win] : Zotero.getMainWindows();
+    for (const w of wins) {
+      try {
+        const item = w.document?.getElementById(TOGGLE_ID);
+        if (!item) {
+          continue;
+        }
+        if (item.getAttribute("type") !== "checkbox") {
+          item.setAttribute("type", "checkbox");
+        }
+        item.setAttribute("checked", enabled ? "true" : "false");
+      } catch (e) {
+        ztoolkit.log("[Stylero] syncToggleUI failed", e);
+      }
+    }
   }
 
   // ---- internals ----
@@ -195,8 +302,8 @@ export class CollectionCountsFactory {
   }
 
   /**
-   * Append/update a single count badge on a collection row node. Idempotent:
-   * removes any pre-existing badge first so recycled DOM never doubles up.
+   * Append/update a single count badge on a row node. Idempotent: removes any
+   * pre-existing badge first so recycled DOM never doubles up.
    */
   private static decorateRow(
     tree: PatchableTree,
@@ -207,29 +314,60 @@ export class CollectionCountsFactory {
       return;
     }
 
-    // Remove any stale badge from a recycled row.
+    // Remove any stale badge from a recycled row (also clears badges when the
+    // feature is toggled off and the tree repaints).
     const stale = node.querySelector(`.${BADGE_CLASS}`);
     if (stale) {
       stale.remove();
     }
 
-    const row = tree.getRow ? tree.getRow(index) : undefined;
-    const ref = row?.ref;
-    if (!ref || !(ref instanceof Zotero.Collection)) {
-      return; // My Library, Trash, Unfiled, groups, separators, etc.
+    if (!getPref(ENABLE_PREF)) {
+      return;
     }
 
-    const mode = this.getMode();
-    const counts = this.getCounts(ref as Zotero.Collection);
-    const label = this.formatLabel(mode, counts);
-    const isZero =
-      mode === "offspring"
-        ? counts.offspring === 0
-        : counts.child === 0 && counts.offspring === 0;
+    const row = tree.getRow ? tree.getRow(index) : undefined;
+    if (!row) {
+      return;
+    }
+    const ref = row.ref;
 
+    if (ref instanceof Zotero.Collection) {
+      const mode = this.getMode();
+      const counts = this.getCounts(ref as Zotero.Collection);
+      const isZero =
+        mode === "offspring"
+          ? counts.offspring === 0
+          : counts.child === 0 && counts.offspring === 0;
+      this.paintBadge(node, this.formatLabel(mode, counts), isZero);
+      return;
+    }
+
+    // Non-collection rows: skip headers/separators, count everything else via
+    // the row's own getItems() (async, cached by stable row id).
+    if (
+      (typeof row.isHeader === "function" && row.isHeader()) ||
+      (typeof row.isSeparator === "function" && row.isSeparator()) ||
+      typeof row.getItems !== "function"
+    ) {
+      return;
+    }
+    const key = row.id != null ? String(row.id) : "";
+    if (!key) {
+      return;
+    }
+
+    const cached = this.genericCache.get(key);
+    if (cached !== undefined) {
+      this.paintBadge(node, String(cached), cached === 0);
+      return;
+    }
+    // Not computed yet: kick off one async count, paint on the next repaint.
+    this.computeGenericCount(row, key);
+  }
+
+  private static paintBadge(node: any, label: string, isZero: boolean): void {
     const doc: Document = node.ownerDocument;
     const primary = node.querySelector(".cell.primary") || node;
-
     const badge = doc.createElement("span");
     badge.className = BADGE_CLASS;
     if (isZero) {
@@ -237,6 +375,41 @@ export class CollectionCountsFactory {
     }
     badge.textContent = label;
     primary.appendChild(badge);
+  }
+
+  /** Asynchronously count a non-collection row's items and cache by id. */
+  private static computeGenericCount(row: any, key: string): void {
+    if (this.pendingGeneric.has(key)) {
+      return;
+    }
+    this.pendingGeneric.add(key);
+    Promise.resolve()
+      .then(() => row.getItems())
+      .then((items: unknown[]) => {
+        this.genericCache.set(key, Array.isArray(items) ? items.length : 0);
+      })
+      .catch((e: unknown) => {
+        ztoolkit.log("[Stylero] generic getItems failed for " + key, e);
+        this.genericCache.set(key, 0);
+      })
+      .finally(() => {
+        this.pendingGeneric.delete(key);
+        this.scheduleGenericRepaint();
+      });
+  }
+
+  /** Coalesce repaints from many async counts resolving at once. */
+  private static scheduleGenericRepaint(): void {
+    if (this.genericRepaintTimer !== null) {
+      return;
+    }
+    this.genericRepaintTimer = setTimeout(() => {
+      this.genericRepaintTimer = null;
+      if (!addon?.data.alive) {
+        return;
+      }
+      this.invalidateAllWindows();
+    }, 120);
   }
 
   private static getMode(): CountMode {
@@ -339,8 +512,14 @@ export class CollectionCountsFactory {
 
   private static repaint(tree: PatchableTree): void {
     try {
-      if (tree.tree && typeof tree.tree.invalidate === "function") {
-        tree.tree.invalidate();
+      const inner = tree.tree;
+      const rowCount = typeof tree.rowCount === "number" ? tree.rowCount : 0;
+      // invalidateRange re-runs the per-row renderItem hook (plain invalidate
+      // only repaints existing DOM and would not re-decorate).
+      if (inner && typeof inner.invalidateRange === "function" && rowCount > 0) {
+        inner.invalidateRange(0, rowCount - 1);
+      } else if (inner && typeof inner.invalidate === "function") {
+        inner.invalidate();
       } else if (typeof tree.refresh === "function") {
         void tree.refresh();
       }

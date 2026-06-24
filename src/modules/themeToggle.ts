@@ -3,8 +3,8 @@ import { getPref } from "../utils/prefs";
 /**
  * Theme toggle.
  *
- * A sun / crescent-moon button in the main-window items toolbar (left of the
- * quick-search box) that flips Zotero between light and dark. It drives the same
+ * A sun / crescent-moon button in the top tab toolbar (left of the "List all
+ * tabs" menu button) that flips Zotero between light and dark. It drives the same
  * preference Zotero's own Settings > General > Appearance radio group writes:
  *
  *   browser.theme.toolbar-theme   0 = dark, 1 = light, 2 = auto (follow system)
@@ -130,7 +130,7 @@ export class ThemeToggleFactory {
     if (!doc || this.buttons.has(win)) {
       return;
     }
-    const toolbar = doc.getElementById("zotero-items-toolbar");
+    const toolbar = doc.getElementById("zotero-tabs-toolbar");
     if (!toolbar) {
       return;
     }
@@ -153,12 +153,12 @@ export class ThemeToggleFactory {
     btn.setAttribute("class", "zotero-tb-button stylero-theme-toggle");
     btn.addEventListener("command", () => this.onClick(win));
 
-    // Insert just left of the quick-search box; fall back to appending.
-    const anchor = doc.getElementById("zotero-tb-search");
+    // Insert just left of the "List all tabs" menu button; fall back to prepend.
+    const anchor = doc.getElementById("zotero-tb-tabs-menu");
     if (anchor && anchor.parentElement === toolbar) {
       toolbar.insertBefore(btn, anchor);
     } else {
-      toolbar.appendChild(btn);
+      toolbar.insertBefore(btn, toolbar.firstChild);
     }
     this.buttons.set(win, btn);
 

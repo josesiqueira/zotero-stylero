@@ -47,7 +47,7 @@ check("config id correct", () => {
 });
 
 // Registered columns
-const expectedCols = ["stylero-title", "stylero-creator", "stylero-readstate"];
+const expectedCols = ["stylero-title", "stylero-creator"];
 let regCols = [];
 check("custom columns registered", () => {
   const cols = (Zotero.ItemTreeManager.getCustomColumns

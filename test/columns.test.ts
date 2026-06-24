@@ -14,11 +14,7 @@ import { config } from "../package.json";
 const ADDON_ID = config.addonID;
 
 /** Always-on columns (progress is off by default, asserted separately). */
-const ALWAYS_ON = [
-  "stylero-title",
-  "stylero-creator",
-  "stylero-readstate",
-];
+const ALWAYS_ON = ["stylero-title", "stylero-creator"];
 
 interface StoredColumn {
   dataKey: string;

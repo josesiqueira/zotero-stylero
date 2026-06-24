@@ -35,4 +35,8 @@ pref-group-reading = Reading time
 pref-readingTime-enable =
     .label = Track per-page reading time (feeds heat & progress)
 
+pref-group-appearance = Appearance
+pref-themeToggle-enable =
+    .label = Sun / moon light-dark toggle in the toolbar
+
 pref-help = { $name } build { $version } { $time }

@@ -1,0 +1,13 @@
+/* Theme toggle (sun / crescent moon) button in the items toolbar. */
+.stylero-theme-toggle {
+  /* Let the inline SVG's context-stroke pick up the toolbar text colour, so the
+     icon stays legible in both light and dark themes. */
+  -moz-context-properties: fill, stroke, fill-opacity, stroke-opacity;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+.stylero-theme-toggle .toolbarbutton-icon {
+  width: 16px;
+  height: 16px;
+}

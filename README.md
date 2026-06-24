@@ -21,6 +21,7 @@ Independent, clean-room implementation inspired by the original "Zotero Style" p
 | Progress column | opt-in | Per-page reading distribution as a bar / line / opacity / stack chart. |
 | Reading-time tracking | on | Focus-gated sampler that accrues per-page dwell time while reading a PDF. |
 | Graph view | on | Force-directed knowledge graph in its own tab. View menu or `Ctrl/Cmd+Alt+G`. |
+| Light / dark toggle | on | Sun / crescent-moon button in the toolbar that flips Zotero's whole light/dark appearance. |
 
 Custom columns can be shown or hidden from the item-table column picker (right-click the
 header). Per-feature toggles and options live in Zotero, Settings, Stylero.

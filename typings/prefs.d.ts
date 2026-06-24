@@ -42,6 +42,7 @@ declare namespace _ZoteroTypes {
       "graphView.showLabels": boolean;
       "graphView.charge": number;
       "graphView.linkDistance": number;
+      "themeToggle.enable": boolean;
     };
   }
 }

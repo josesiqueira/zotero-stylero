@@ -52,3 +52,6 @@ pref("graphView.nodeCap", 400);
 pref("graphView.showLabels", true);
 pref("graphView.charge", -220);
 pref("graphView.linkDistance", 60);
+
+// Theme toggle (sun / crescent moon in the items toolbar; flips Zotero light/dark).
+pref("themeToggle.enable", true);

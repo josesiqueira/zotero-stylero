@@ -10,6 +10,7 @@ import { UnreadColumnFactory } from "./modules/unreadColumn";
 import { RatingColumnFactory } from "./modules/ratingColumn";
 import { ItemRowDecorator } from "./modules/itemRowDecorator";
 import { GraphViewFactory } from "./modules/graphView";
+import { ThemeToggleFactory } from "./modules/themeToggle";
 
 async function onStartup() {
   await Promise.all([
@@ -38,6 +39,9 @@ async function onStartup() {
   // Knowledge graph.
   await GraphViewFactory.register();
 
+  // Light/dark toolbar toggle.
+  ThemeToggleFactory.register();
+
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
@@ -61,6 +65,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   UnreadColumnFactory.registerWindow(win);
   RatingColumnFactory.registerWindow(win);
   GraphViewFactory.registerWindow(win);
+  ThemeToggleFactory.registerWindow(win);
 }
 
 async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
@@ -74,6 +79,7 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   UnreadColumnFactory.unregisterWindow(win);
   RatingColumnFactory.unregisterWindow(win);
   GraphViewFactory.unregisterWindow(win);
+  ThemeToggleFactory.unregisterWindow(win);
   ItemRowDecorator.unregisterWindow(win);
 
   ztoolkit.unregisterAll();
@@ -111,6 +117,7 @@ async function onShutdown(): Promise<void> {
   CollectionCountsFactory.unregister();
   ReadStateFactory.unregister();
   GraphViewFactory.unregister();
+  ThemeToggleFactory.unregister();
 
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();

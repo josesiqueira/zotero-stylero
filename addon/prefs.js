@@ -9,18 +9,6 @@ pref("readingTime.hangGuardMs", 60000);
 pref("readingTime.idleResetMs", 0);
 pref("readingTime.persistDebounceMs", 5000);
 
-// Title column (feature 1).
-pref("titleColumn.enable", true);
-pref("titleColumn.heat.enable", true);
-pref("titleColumn.heat.hue", 12);
-pref("titleColumn.heat.maxAlpha", "0.45");
-pref("titleColumn.heat.scale", "sqrt");
-pref("titleColumn.icon.enable", true);
-pref("titleColumn.striping.enable", true);
-pref("titleColumn.tagSwatches.enable", true);
-pref("titleColumn.tagSwatches.max", 5);
-pref("titleColumn.bold.scope", "feeds");
-
 // Creator column (feature 2).
 pref("creatorColumn.enable", true);
 pref("creatorColumn.template", "${lastName}, ${firstName}");

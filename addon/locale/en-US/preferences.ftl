@@ -1,16 +1,6 @@
 pref-title = Zotero Stylero
 
 pref-group-columns = Item-table columns
-pref-titleColumn-enable =
-    .label = Title column (heat, icon, striping, tags)
-pref-titleColumn-heat =
-    .label = Reading-time heat background
-pref-titleColumn-icon =
-    .label = File-type icon
-pref-titleColumn-striping =
-    .label = Odd/even row striping
-pref-titleColumn-tags =
-    .label = Colored tag swatches before title
 pref-creatorColumn-enable =
     .label = Creator column (templated)
 pref-creatorColumn-template = Template

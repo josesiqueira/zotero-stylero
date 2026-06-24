@@ -14,7 +14,7 @@ import { config } from "../package.json";
 const ADDON_ID = config.addonID;
 
 /** Always-on columns (progress is off by default, asserted separately). */
-const ALWAYS_ON = ["stylero-title", "stylero-creator"];
+const ALWAYS_ON = ["stylero-creator"];
 
 interface StoredColumn {
   dataKey: string;
@@ -99,13 +99,7 @@ describe("columns: registration", function () {
     }
   });
 
-  it("title + creator dataProviders return non-empty content", function () {
-    const title = findColumn("stylero-title")!;
-    assert.isNotEmpty(
-      title.dataProvider!(tempItem, title.dataKey),
-      "title dataProvider should mirror the display title",
-    );
-
+  it("creator dataProvider returns non-empty content", function () {
     const creator = findColumn("stylero-creator")!;
     assert.isNotEmpty(
       creator.dataProvider!(tempItem, creator.dataKey),

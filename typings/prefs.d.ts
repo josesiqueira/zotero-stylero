@@ -12,16 +12,6 @@ declare namespace _ZoteroTypes {
       "readingTime.hangGuardMs": number;
       "readingTime.idleResetMs": number;
       "readingTime.persistDebounceMs": number;
-      "titleColumn.enable": boolean;
-      "titleColumn.heat.enable": boolean;
-      "titleColumn.heat.hue": number;
-      "titleColumn.heat.maxAlpha": string;
-      "titleColumn.heat.scale": string;
-      "titleColumn.icon.enable": boolean;
-      "titleColumn.striping.enable": boolean;
-      "titleColumn.tagSwatches.enable": boolean;
-      "titleColumn.tagSwatches.max": number;
-      "titleColumn.bold.scope": string;
       "creatorColumn.enable": boolean;
       "creatorColumn.template": string;
       "creatorColumn.join": string;

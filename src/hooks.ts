@@ -2,7 +2,6 @@ import { initLocale } from "./utils/locale";
 import { registerPrefsScripts } from "./modules/preferenceScript";
 import { createZToolkit } from "./utils/ztoolkit";
 import { ReadingTimeFactory } from "./modules/readingTime";
-import { TitleColumnFactory } from "./modules/titleColumn";
 import { CreatorColumnFactory } from "./modules/creatorColumn";
 import { CollectionCountsFactory } from "./modules/collectionCounts";
 import { ProgressColumnFactory } from "./modules/progressColumn";
@@ -27,7 +26,6 @@ async function onStartup() {
   await ReadingTimeFactory.register();
 
   // Item-tree columns.
-  await TitleColumnFactory.register();
   await CreatorColumnFactory.register();
   await ProgressColumnFactory.register();
   await UnreadColumnFactory.register();
@@ -57,7 +55,6 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   ItemRowDecorator.registerWindow(win);
 
   ReadingTimeFactory.registerWindow(win);
-  TitleColumnFactory.registerWindow(win);
   ProgressColumnFactory.registerWindow(win);
   CollectionCountsFactory.registerWindow(win);
   ReadStateFactory.registerWindow(win);
@@ -72,7 +69,6 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   // CollectionCounts must restore the patched renderItem BEFORE unregisterAll.
   CollectionCountsFactory.unregisterWindow(win);
   ReadingTimeFactory.unregisterWindow(win);
-  TitleColumnFactory.unregisterWindow(win);
   ProgressColumnFactory.unregisterWindow(win);
   ReadStateFactory.unregisterWindow(win);
   UnreadColumnFactory.unregisterWindow(win);
@@ -108,7 +104,6 @@ async function onShutdown(): Promise<void> {
   } catch (e) {
     ztoolkit.log("ReadingTimeFactory.unregister failed", e);
   }
-  void TitleColumnFactory.unregister();
   CreatorColumnFactory.unregister();
   ProgressColumnFactory.unregister();
   UnreadColumnFactory.unregister();

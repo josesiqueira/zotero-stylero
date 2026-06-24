@@ -47,7 +47,7 @@ check("config id correct", () => {
 });
 
 // Registered columns
-const expectedCols = ["stylero-title", "stylero-creator"];
+const expectedCols = ["stylero-creator"];
 let regCols = [];
 check("custom columns registered", () => {
   const cols = (Zotero.ItemTreeManager.getCustomColumns
@@ -85,15 +85,6 @@ check("dataProvider + renderCell do not throw", () => {
   return JSON.stringify(results);
 });
 
-// Title column produces icon + heat/striping classes
-check("title cell has icon + decoration classes", () => {
-  const c = regCols.find((x) => (x.dataKey || "").includes("stylero-title"));
-  assert(c, "title column missing");
-  const node = c.renderCell(0, c.dataProvider(item, c.dataKey), { dataKey: c.dataKey, className: "cell" }, true, doc);
-  const html = node.outerHTML || "";
-  assert(/stylero-title-cell/.test(html), "no title cell class");
-  return "title cell ok";
-});
 
 
 // Collection count badges present in the collection tree DOM
@@ -122,7 +113,7 @@ check("graph view menu item present", () => {
 // Preferences readable
 check("all feature prefs readable", () => {
   const keys = [
-    "readingTime.enable", "titleColumn.enable", "creatorColumn.enable",
+    "readingTime.enable", "creatorColumn.enable",
     "collectionCounts.enable", "progressColumn.enable",
     "readState.enable", "graphView.enable",
   ];

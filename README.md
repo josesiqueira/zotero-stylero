@@ -16,21 +16,21 @@ original "Zotero Style" plugin — no code from that project is used.
 
 | Feature | Default | What it does |
 |---|---|---|
-| **Read / unread emphasis** | on, visible | A narrow indicator column; unread items are shown **bold across the whole row**. Mirrors Zotero feed read state, with an option to extend to all items. |
+| **Read / unread emphasis** | on | Unread items are shown **bold across the whole row** (no column needed; applied via a row decorator). Mirrors Zotero feed read state, with an option (`readState.boldAllItems`) to extend to all items. |
+| **Unread column** | on, visible | A dot for items carrying the `.unread` tag (configurable), empty otherwise. Tag-driven and sortable. |
+| **Rating column** | on, visible | Interactive normalized 5-star rating (`★★★☆☆`) read from / written to an all-`⭐` tag — the tag is the source of truth. Click a star to set; click the current rating to clear. Sortable; strips the star tag from the title. |
 | **Collection item counts** | on | Count badges on every collection-tree row (collections, My Library, group libraries, saved searches, Unfiled, Duplicates, Bin, etc.). Collection modes: child / offspring (recursive, deduped) / both / both-reversed. Toggle via **View → Show item counts**. |
-| **Colored tag swatches** | on | Item tags shown as colored dots before the title (part of the Title column). |
-| **Title column** | available (opt-in) | A decorated title column: reading-time **heat background**, file-type icon, odd/even striping, colored tags. Add it from the column picker (it complements the native Title column). |
-| **Creator column** | available (opt-in) | Author list reformatted with a template (`${lastName}`, `${firstName}`, `${firstCreator}`), slicing, custom join, and ellipsis. |
+| **Creator column** | available (opt-in) | Author list reformatted with a template (`${lastName}`, `${firstName}`, `${firstCreator}`), slicing, custom join, and ellipsis; includes the item-type icon. |
 | **Progress column** | available (opt-in, off) | Per-page annotation / reading distribution drawn as a bar / line / opacity / stack chart. |
-| **Reading-time tracking** | on | Focus-gated sampler that accrues per-page dwell time while you read a PDF; feeds the Title heat background and the Progress column. Persisted locally. |
+| **Reading-time tracking** | on | Focus-gated sampler that accrues per-page dwell time while you read a PDF; feeds the Progress column. Persisted locally. |
 | **Graph view** | on | An Obsidian-style force-directed knowledge graph (related / author / tag / default modes) in its own tab. Open via **View → Stylero: Graph View** or `Ctrl/Cmd+Alt+G`. Dependency-free (no PIXI/d3 bundle). |
 
 ### A note on columns
-Zotero registers custom columns hidden by default; Stylero ships the Read-state
-column visible out of the box. Title, Creator and Progress are opt-in:
-enable them from the item-table column picker (right-click the column header). The
-whole-row unread bold depends on the Read-state indicator column being visible; if
-you hide it, bolding turns off.
+Zotero registers custom columns hidden by default; Stylero ships the **Unread**,
+**Rating** and **Creator** columns visible out of the box (Creator can be hidden;
+Progress is opt-in). Enable/disable any from the item-table column picker
+(right-click the column header). The whole-row unread bold needs no column — it is
+applied directly to the row.
 
 ## Settings
 Open **Zotero → Settings → Stylero**. Every feature has a toggle, plus options for

@@ -4,7 +4,7 @@ This is the authoritative description of what the shipped plugin actually does,
 verified against the source. Where the older `doc/plan/bucket-*.md` design specs
 disagree, this file wins. Target: Zotero 9 (9.0.4 and later).
 
-The plugin registers nine user-facing features plus one shared internal helper.
+The plugin registers eight user-facing features plus one shared internal helper.
 Each feature is a `XxxFactory` class under `src/modules/`, wired in `src/hooks.ts`.
 
 ## Features
@@ -68,16 +68,9 @@ read-set keyed by item key.
 > `boldAllItems` on, regular items effectively stay bold. The feature is reliable for
 > feed read-state; the all-items mode is best treated as experimental.
 
-### Graph view (`graphView.ts`, `graphView/forceSim.ts`, `graphData.ts`, `renderer.ts`)
-On by default. Opens in its own tab (View, "Stylero: Graph View", or `Ctrl/Cmd+Alt+G`).
-Modes: `default` (a help splash), `related` (Zotero related-item links), `author`
-(items linked to author nodes), `tag` (items linked to tag nodes). Scopes: current
-view, selection plus neighbours, or whole library (regular items only). Rendered on a
-2D canvas with a hand-rolled velocity-Verlet force simulation (Barnes-Hut repulsion,
-link springs, centering gravity); no PIXI, no d3, no graphics dependency. Interactions:
-drag/pin nodes, pan, wheel-zoom, double-click to open an item, two-way selection sync
-with the item tree, plus Rebuild, Fit, and a theme selector (auto/light/dark). Node cap
-default 400 (keeps highest-degree nodes when exceeded).
+> The library knowledge graph that used to live here has moved to its own plugin,
+> [Zotero Bibliometero](https://github.com/josesiqueira/zotero-bibliometero). Stylero
+> no longer ships any graph code.
 
 ### Light / dark toggle (`themeToggle.ts`)
 On by default. A sun / crescent-moon `toolbarbutton` in the tab toolbar, left of the
@@ -125,20 +118,12 @@ settings pane; the rest are tunable via the config editor.
 | `readState.boldAllItems` | `false` | Read/unread emphasis |
 | `readState.wholeRow` | `true` | Read/unread emphasis |
 | `readState.readKeys` | `""` | Read/unread emphasis (internal) |
-| `graphView.enable` | `true` | Graph view |
-| `graphView.mode` | `default` | Graph view |
-| `graphView.scope` | `view` | Graph view |
-| `graphView.theme` | `auto` | Graph view |
-| `graphView.nodeCap` | `400` | Graph view |
-| `graphView.showLabels` | `true` | Graph view |
-| `graphView.charge` | `-220` | Graph view |
-| `graphView.linkDistance` | `60` | Graph view |
 | `themeToggle.enable` | `true` | Light/dark toggle |
 
 ## Settings pane groups
 Item-table columns (Creator + template, Progress + style, Unread, Rating + hide),
 Collections & state (Collection counts + mode, Read/unread emphasis + whole-row +
-all-items), Graph view (enable + mode + theme), Reading time (enable), Appearance
+all-items), Reading time (enable), Appearance
 (light/dark toggle).
 
 ## Build & compatibility

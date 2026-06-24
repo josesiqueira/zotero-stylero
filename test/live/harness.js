@@ -7,8 +7,8 @@
  * `stylero-test` skill and for manual live verification.
  *
  * It exercises only UI-observable / public surface (instance, registered
- * columns, cell renderers, collection-count badges, the Graph View menu,
- * preferences). Internal pure logic (ReadingStore, GraphData, force sim,
+ * columns, cell renderers, collection-count badges,
+ * preferences). Internal pure logic (ReadingStore,
  * creator formatting) is covered by the mocha suite under test/*.test.ts.
  */
 const report = { passed: 0, failed: 0, checks: [] };
@@ -98,24 +98,12 @@ check("collection count badge rendered", () => {
   return "badges: " + (badges.length || anyStylero.length);
 });
 
-// Graph View menu item present
-check("graph view menu item present", () => {
-  if (Zotero.Prefs.get("extensions.zotero.zoterostylero.graphView.enable", true) === false)
-    return "disabled (skipped)";
-  const txt = (doc.documentElement.textContent || "");
-  const menus = doc.querySelectorAll('menuitem,[label]');
-  let found = false;
-  menus.forEach((m) => { if (/graph/i.test(m.getAttribute && (m.getAttribute("label") || ""))) found = true; });
-  assert(found || /graph view/i.test(txt), "graph view menu not found");
-  return "graph menu present";
-});
-
 // Preferences readable
 check("all feature prefs readable", () => {
   const keys = [
     "readingTime.enable", "creatorColumn.enable",
     "collectionCounts.enable", "progressColumn.enable",
-    "readState.enable", "graphView.enable",
+    "readState.enable", "themeToggle.enable",
   ];
   const vals = {};
   for (const k of keys) {

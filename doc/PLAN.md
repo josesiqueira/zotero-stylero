@@ -4,9 +4,10 @@
 > shipped build. The **Title column (bucket B) was dropped** (its reading-time "heat"
 > idea is not in the product), the **Rating column shipped tag-driven** (an all-`⭐`
 > tag, not Extra-field `rate:`), and an **Unread column** (`.unread` tag) plus a
-> **Light/dark toggle** were added. The authoritative as-built feature and preference
-> list is **[`doc/FEATURES.md`](FEATURES.md)**; the bucket specs below are kept as
-> design history.
+> **Light/dark toggle** were added; and the **Graph View (bucket E) was moved out**
+> into its own plugin, `zotero-bibliometero`, so Stylero is styling-only. The
+> authoritative as-built feature and preference list is **[`doc/FEATURES.md`](FEATURES.md)**;
+> the bucket specs below are kept as design history.
 
 Zotero 9 plugin built on the windingwind template v3.1.0 (scaffold + toolkit v5).
 Per-bucket design specs: `doc/plan/bucket-{A..E}.md`. Build contract: `doc/STYLERO_CONTRACT.md`.
@@ -18,7 +19,7 @@ Per-bucket design specs: `doc/plan/bucket-{A..E}.md`. Build contract: `doc/STYLE
 | B | ~~Title column (1)~~ **dropped, not shipped** | (removed) |
 | C | Creator (2), Rating (tag-driven), Unread column, Collection counts (12) | `src/modules/creatorColumn.ts`, `src/modules/ratingColumn.ts`, `src/modules/unreadColumn.ts`, `src/modules/collectionCounts.ts` + CSS |
 | D | Progress column (8, off by default), Read/Unread whole-row bold (19) | `src/modules/progressColumn.ts`, `src/modules/readState.ts` + CSS |
-| E | Graph View (18): lightweight, no PIXI vendor | `src/modules/graphView.ts`, `src/modules/graphView/*.ts`, `addon/content/graphView.css` |
+| E | ~~Graph View (18)~~ **moved out to the `zotero-bibliometero` plugin** | (removed) |
 | (added) | Light/dark toggle | `src/modules/themeToggle.ts`, `addon/content/themeToggle.css` |
 
 ## Cross-bucket dependency

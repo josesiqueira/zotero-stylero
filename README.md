@@ -3,11 +3,14 @@
 [![Zotero 9](https://img.shields.io/badge/Zotero-9-CC2936?style=flat-square&logo=zotero&logoColor=white)](https://www.zotero.org)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg?style=flat-square)](LICENSE)
 
-Zotero Stylero adds styled item-table columns, collection counts, reading-time
-tracking, read/unread emphasis, a knowledge-graph view, and a one-click light/dark
-switch to Zotero 9. It is deliberately lightweight and dependency-free: the only
-runtime dependency is the Zotero plugin toolkit, and even the graph is hand-rolled
-on a 2D canvas (no PIXI, no d3).
+Zotero Stylero is a styling plugin for Zotero 9. It adds styled item-table columns,
+collection counts, reading-time tracking, read/unread emphasis, and a one-click
+light/dark switch. It is deliberately lightweight and dependency-free: the only
+runtime dependency is the Zotero plugin toolkit.
+
+> Looking for the library knowledge graph? It now lives in its own plugin,
+> [Zotero Bibliometero](https://github.com/josesiqueira/zotero-bibliometero), so
+> Stylero stays focused on styling.
 
 ## Features
 
@@ -20,7 +23,6 @@ on a 2D canvas (no PIXI, no d3).
 | Collection counts | On | Item-count badges on collection-tree rows: collections, My Library, group libraries, saved searches, Unfiled, Duplicates, and Trash. Modes: child, offspring (recursive), or both. Toggle from View, Show item counts. |
 | Progress column | Off (opt-in) | A compact per-page mini-chart of annotation and/or reading-time distribution across a PDF, drawn as a bar, line, opacity, or stacked chart. Enable it in settings. |
 | Reading-time tracking | On | A focus-gated sampler that records per-page dwell time while you read a PDF, saved to a local JSON file. It feeds the Progress column when that column's source includes reading. |
-| Graph view | On | A force-directed knowledge graph of your library in its own tab. Connect items by related links, shared authors, or shared tags; drag and pin nodes, pan, zoom, and click a node to sync the selection with the item list. Open from View, Stylero: Graph View, or `Ctrl/Cmd+Alt+G`. |
 | Light / dark toggle | On | A sun and crescent-moon button in the tab bar that flips Zotero's whole appearance between light and dark. It drives the same setting as Zotero's own Appearance preference, so it is a true app-wide switch. |
 
 ### Which columns show by default
@@ -31,8 +33,8 @@ The read/unread bolding needs no column at all.
 
 ## Settings
 Open Zotero, Settings, Stylero. Each feature has a toggle, plus options for the
-creator template, count mode, progress chart style, graph mode and theme, and the
-read/unread bolding behavior. A full as-built list of every preference is in
+creator template, count mode, progress chart style, and the read/unread bolding
+behavior. A full as-built list of every preference is in
 [`doc/FEATURES.md`](doc/FEATURES.md).
 
 ## Install

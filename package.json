@@ -2,7 +2,7 @@
   "name": "zotero-stylero",
   "type": "module",
   "version": "0.0.1",
-  "description": "A lightweight, dependency-free Zotero 9 plugin: styled item-table columns, collection counts, reading-time tracking, read/unread emphasis, a knowledge-graph view, and a light/dark toggle.",
+  "description": "A lightweight, dependency-free Zotero 9 styling plugin: styled item-table columns, collection counts, reading-time tracking, read/unread emphasis, and a light/dark toggle.",
   "config": {
     "addonName": "Zotero Stylero",
     "addonID": "zotero-stylero@jose.local",

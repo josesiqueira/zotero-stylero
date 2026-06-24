@@ -25,15 +25,9 @@ pref-readState-wholeRow =
 pref-readState-boldAll =
     .label = Apply to all items (not just feeds)
 
-pref-group-graph = Graph view
-pref-graphView-enable =
-    .label = Knowledge graph (View menu / Ctrl+Alt+G)
-pref-graphView-mode = Mode
-pref-graphView-theme = Theme
-
 pref-group-reading = Reading time
 pref-readingTime-enable =
-    .label = Track per-page reading time (feeds heat & progress)
+    .label = Track per-page reading time (feeds the Progress column)
 
 pref-group-appearance = Appearance
 pref-themeToggle-enable =

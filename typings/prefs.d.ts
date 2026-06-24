@@ -34,14 +34,6 @@ declare namespace _ZoteroTypes {
       "readState.boldAllItems": boolean;
       "readState.wholeRow": boolean;
       "readState.readKeys": string;
-      "graphView.enable": boolean;
-      "graphView.mode": string;
-      "graphView.scope": string;
-      "graphView.theme": string;
-      "graphView.nodeCap": number;
-      "graphView.showLabels": boolean;
-      "graphView.charge": number;
-      "graphView.linkDistance": number;
       "themeToggle.enable": boolean;
     };
   }

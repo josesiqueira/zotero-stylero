@@ -42,16 +42,15 @@ parallel):
      (only appears on in-place reinstall, never on a clean restart),
    - `*deprecated*` warnings.
 8. **Optional visual check**: `zotero_screenshot` to eyeball colored tag swatches,
-   collection-count badges, and (after enabling them in the column picker) the
-   Title/Creator columns; open View → "Stylero: Graph View" to verify the
-   graph tab renders.
+   collection-count badges, the Rating/Unread columns, and (after enabling it in the
+   column picker) the Creator column.
 
 Report a concise pass/fail summary with any failing check names and error lines.
 
 ## Procedure (mocha unit/integration suite)
 
 The canonical suite lives in `test/*.test.ts` (smoke, columns, creator,
-collectionCounts, readingStore, graphData, readState). It runs in a dedicated
+collectionCounts, readingStore, readState). It runs in a dedicated
 Zotero test instance:
 
 1. Copy `.env.example` to `.env` and set the Zotero binary path

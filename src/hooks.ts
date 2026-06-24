@@ -9,7 +9,6 @@ import { ReadStateFactory } from "./modules/readState";
 import { UnreadColumnFactory } from "./modules/unreadColumn";
 import { RatingColumnFactory } from "./modules/ratingColumn";
 import { ItemRowDecorator } from "./modules/itemRowDecorator";
-import { GraphViewFactory } from "./modules/graphView";
 import { ThemeToggleFactory } from "./modules/themeToggle";
 
 async function onStartup() {
@@ -21,9 +20,8 @@ async function onStartup() {
 
   initLocale();
 
-  // Reading-time sampler must initialize its store BEFORE the columns that read
-  // it (Title heat, Progress) register, since their cell renderers read the
-  // in-memory cache synchronously.
+  // Reading-time sampler must initialize its store BEFORE the Progress column
+  // that reads it, since its cell renderer reads the in-memory cache synchronously.
   await ReadingTimeFactory.register();
 
   // Item-tree columns.
@@ -35,9 +33,6 @@ async function onStartup() {
   // Tree / state decorations.
   CollectionCountsFactory.register();
   await ReadStateFactory.register();
-
-  // Knowledge graph.
-  await GraphViewFactory.register();
 
   // Light/dark toolbar toggle.
   ThemeToggleFactory.register();
@@ -64,7 +59,6 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   ReadStateFactory.registerWindow(win);
   UnreadColumnFactory.registerWindow(win);
   RatingColumnFactory.registerWindow(win);
-  GraphViewFactory.registerWindow(win);
   ThemeToggleFactory.registerWindow(win);
 }
 
@@ -78,7 +72,6 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   ReadStateFactory.unregisterWindow(win);
   UnreadColumnFactory.unregisterWindow(win);
   RatingColumnFactory.unregisterWindow(win);
-  GraphViewFactory.unregisterWindow(win);
   ThemeToggleFactory.unregisterWindow(win);
   ItemRowDecorator.unregisterWindow(win);
 
@@ -116,7 +109,6 @@ async function onShutdown(): Promise<void> {
   RatingColumnFactory.unregister();
   CollectionCountsFactory.unregister();
   ReadStateFactory.unregister();
-  GraphViewFactory.unregister();
   ThemeToggleFactory.unregister();
 
   ztoolkit.unregisterAll();
@@ -154,7 +146,7 @@ async function onPrefsEvent(type: string, data: { [key: string]: any }) {
 }
 
 function onShortcuts(_type: string) {
-  // Shortcuts are registered directly by feature modules (e.g. Graph View).
+  // Shortcuts are registered directly by feature modules.
 }
 
 function onDialogEvents(_type: string) {

@@ -1,7 +1,8 @@
 # Bucket E - implementation spec
 
-> **As-built note:** Shipped as designed (dependency-free Canvas2D graph). See
-> [`doc/FEATURES.md`](../FEATURES.md) for the user-facing summary.
+> **MOVED OUT.** This Graph View shipped in Stylero, then was extracted into its own
+> plugin, **`zotero-bibliometero`**, to keep Stylero styling-only. Stylero no longer
+> contains any graph code. This spec is kept as the original design history.
 
 
 ## Features

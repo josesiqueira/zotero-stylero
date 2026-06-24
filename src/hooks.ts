@@ -10,6 +10,7 @@ import { UnreadColumnFactory } from "./modules/unreadColumn";
 import { RatingColumnFactory } from "./modules/ratingColumn";
 import { ItemRowDecorator } from "./modules/itemRowDecorator";
 import { ThemeToggleFactory } from "./modules/themeToggle";
+import { ColumnManagerFactory } from "./modules/columnManager";
 
 async function onStartup() {
   await Promise.all([
@@ -37,6 +38,9 @@ async function onStartup() {
   // Light/dark toolbar toggle.
   ThemeToggleFactory.register();
 
+  // Column Manager (toolbar button + View menu + header-menu entry points).
+  ColumnManagerFactory.register();
+
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
   );
@@ -60,6 +64,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   UnreadColumnFactory.registerWindow(win);
   RatingColumnFactory.registerWindow(win);
   ThemeToggleFactory.registerWindow(win);
+  ColumnManagerFactory.registerWindow(win);
 }
 
 async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
@@ -73,6 +78,7 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   UnreadColumnFactory.unregisterWindow(win);
   RatingColumnFactory.unregisterWindow(win);
   ThemeToggleFactory.unregisterWindow(win);
+  ColumnManagerFactory.unregisterWindow(win);
   ItemRowDecorator.unregisterWindow(win);
 
   ztoolkit.unregisterAll();
@@ -90,6 +96,8 @@ async function onShutdown(): Promise<void> {
       // a previous-generation wrapper (onMainWindowUnload doesn't fire on reload).
       ItemRowDecorator.unregisterWindow(win);
       RatingColumnFactory.unregisterWindow(win);
+      // Restore the patched buildColumnPickerMenu + remove the toolbar button.
+      ColumnManagerFactory.unregisterWindow(win);
     } catch (e) {
       ztoolkit.log("per-window shutdown cleanup failed", e);
     }
@@ -110,6 +118,7 @@ async function onShutdown(): Promise<void> {
   CollectionCountsFactory.unregister();
   ReadStateFactory.unregister();
   ThemeToggleFactory.unregister();
+  ColumnManagerFactory.unregister();
 
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();
@@ -145,6 +154,19 @@ async function onPrefsEvent(type: string, data: { [key: string]: any }) {
   }
 }
 
+/**
+ * Dispatcher for Column Manager dialog events (called from columnManager.xhtml).
+ */
+async function onColumnManagerEvent(type: string, data: { [key: string]: any }) {
+  switch (type) {
+    case "load":
+      ColumnManagerFactory.onDialogLoad(data.window);
+      break;
+    default:
+      return;
+  }
+}
+
 function onShortcuts(_type: string) {
   // Shortcuts are registered directly by feature modules.
 }
@@ -160,6 +182,7 @@ export default {
   onMainWindowUnload,
   onNotify,
   onPrefsEvent,
+  onColumnManagerEvent,
   onShortcuts,
   onDialogEvents,
 };

@@ -1,0 +1,235 @@
+/* ===== Toolbar button (main window) ===================================== */
+.stylero-column-manager-button {
+  -moz-context-properties: fill, stroke, fill-opacity, stroke-opacity;
+  fill: currentColor;
+  stroke: currentColor;
+}
+.stylero-column-manager-button .toolbarbutton-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ===== Dialog =========================================================== */
+/* The XUL <window> must have a definite height for the root's height:100% to
+   resolve. NOTE: do NOT use 100vh here — in a chrome window vh is the SCREEN
+   height, not the window content box, so the root overflowed and the footer
+   fell off-screen with no scrollbar. 100% of the window is the correct anchor. */
+:root {
+  height: 100%;
+}
+#stylero-cm-root {
+  /* Fill the window and lay children out as a flex column so the list
+     between the (fixed) preview and footer takes the remaining height and
+     scrolls, instead of growing to full content height and pushing the
+     footer off-screen when the column list is long / the window maximized. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  gap: 8px;
+  font: menu;
+  background: var(--material-background, Field);
+  color: var(--fill-primary, FieldText);
+}
+
+.cm-intro {
+  font-size: 0.9em;
+  opacity: 0.8;
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+
+.cm-section-label {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  margin-top: 6px;
+}
+
+/* ---- preview ("mockup") strip ---- */
+.cm-preview {
+  display: flex;
+  flex-direction: row;
+  flex: 0 0 auto; /* fixed-height strip; never shrink */
+  gap: 2px;
+  overflow-x: auto;
+  padding: 6px;
+  border: 1px solid var(--fill-quinary, rgba(128, 128, 128, 0.3));
+  border-radius: 6px;
+  background: var(--material-mix-quarternary, rgba(128, 128, 128, 0.08));
+  min-height: 34px;
+}
+.cm-chip {
+  flex-grow: 0;
+  flex-shrink: 0;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 8px;
+  font-size: 0.82em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--color-border, rgba(128, 128, 128, 0.4));
+  border-radius: 4px;
+  background: var(--material-button, rgba(128, 128, 128, 0.12));
+}
+.cm-preview-empty {
+  font-size: 0.85em;
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ---- column list ---- */
+.cm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0; /* allow the flex item to shrink below content height so it scrolls */
+  border: 1px solid var(--fill-quinary, rgba(128, 128, 128, 0.3));
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.cm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.cm-row:hover {
+  background: var(--material-mix-quarternary, rgba(128, 128, 128, 0.1));
+}
+.cm-row.is-collision {
+  box-shadow: inset 2px 0 0 0 var(--accent-red, #e0534a);
+}
+.cm-row.is-ghost .cm-name {
+  font-style: italic;
+  opacity: 0.85;
+}
+.cm-row.is-purged {
+  opacity: 0.45;
+}
+.cm-row.is-purged .cm-name,
+.cm-row.is-purged .cm-key {
+  text-decoration: line-through;
+}
+
+.cm-handle {
+  cursor: grab;
+  opacity: 0.5;
+  user-select: none;
+  font-size: 1.1em;
+}
+.cm-ord {
+  min-width: 1.6em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+.cm-visible {
+  margin: 0 2px;
+}
+
+.cm-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cm-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-key {
+  font-size: 0.74em;
+  opacity: 0.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 38%;
+}
+.cm-ghost-tag,
+.cm-collision-tag {
+  font-size: 0.7em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.cm-ghost-tag {
+  background: rgba(224, 83, 74, 0.16);
+  color: var(--accent-red, #e0534a);
+}
+.cm-collision-tag {
+  background: rgba(230, 160, 30, 0.18);
+  color: var(--accent-orange, #c77b16);
+}
+
+.cm-width {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cm-slider {
+  width: 120px;
+}
+.cm-width-val {
+  font-size: 0.74em;
+  opacity: 0.6;
+  min-width: 3.4em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cm-move,
+.cm-purge {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+.cm-move:hover,
+.cm-purge:hover {
+  opacity: 1;
+  background: var(--material-mix-quarternary, rgba(128, 128, 128, 0.18));
+}
+
+/* ---- footer ---- */
+.cm-footer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 0 0 auto; /* always pinned, visible at the bottom */
+  gap: 8px;
+  padding-top: 8px;
+}
+.cm-spacer {
+  flex: 1 1 auto;
+}
+.cm-btn {
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border, rgba(128, 128, 128, 0.4));
+  background: var(--material-button, rgba(128, 128, 128, 0.12));
+  cursor: pointer;
+}
+.cm-btn:hover {
+  background: var(--material-mix-quarternary, rgba(128, 128, 128, 0.22));
+}
+.cm-apply {
+  font-weight: 600;
+  border-color: var(--accent-blue, #4072e5);
+  color: var(--accent-blue, #4072e5);
+}

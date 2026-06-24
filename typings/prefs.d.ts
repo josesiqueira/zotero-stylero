@@ -35,6 +35,7 @@ declare namespace _ZoteroTypes {
       "readState.wholeRow": boolean;
       "readState.readKeys": string;
       "themeToggle.enable": boolean;
+      "columnManager.enable": boolean;
     };
   }
 }

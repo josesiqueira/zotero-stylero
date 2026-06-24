@@ -45,3 +45,8 @@ pref("readState.readKeys", "");
 
 // Theme toggle (sun / crescent moon in the items toolbar; flips Zotero light/dark).
 pref("themeToggle.enable", true);
+
+// Column Manager (reorder/show-hide/resize columns + purge ghost columns left by
+// uninstalled plugins). Adds a toolbar button, a View-menu item, and a
+// "Manage columns…" entry to the column-header context menu.
+pref("columnManager.enable", true);

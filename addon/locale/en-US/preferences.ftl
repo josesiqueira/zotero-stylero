@@ -33,4 +33,8 @@ pref-group-appearance = Appearance
 pref-themeToggle-enable =
     .label = Sun / moon light-dark toggle in the toolbar
 
+pref-group-tools = Tools
+pref-columnManager-enable =
+    .label = Column Manager (reorder / show-hide / resize columns, purge ghost columns)
+
 pref-help = { $name } build { $version } { $time }

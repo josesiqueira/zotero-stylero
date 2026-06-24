@@ -9,7 +9,7 @@
  * It exercises only UI-observable / public surface (instance, registered
  * columns, cell renderers, collection-count badges, the Graph View menu,
  * preferences). Internal pure logic (ReadingStore, GraphData, force sim,
- * creator/rating formatting) is covered by the mocha suite under test/*.test.ts.
+ * creator formatting) is covered by the mocha suite under test/*.test.ts.
  */
 const report = { passed: 0, failed: 0, checks: [] };
 function check(name, fn) {
@@ -47,7 +47,7 @@ check("config id correct", () => {
 });
 
 // Registered columns
-const expectedCols = ["stylero-title", "stylero-creator", "stylero-rating", "stylero-readstate"];
+const expectedCols = ["stylero-title", "stylero-creator", "stylero-readstate"];
 let regCols = [];
 check("custom columns registered", () => {
   const cols = (Zotero.ItemTreeManager.getCustomColumns
@@ -95,13 +95,6 @@ check("title cell has icon + decoration classes", () => {
   return "title cell ok";
 });
 
-// Rating cell renders stars
-check("rating cell renders stars", () => {
-  const c = regCols.find((x) => (x.dataKey || "").includes("stylero-rating"));
-  const node = c.renderCell(0, "0", { dataKey: c.dataKey, className: "cell" }, false, doc);
-  assert(/stylero-rating/.test(node.outerHTML || ""), "no rating markup");
-  return "rating cell ok";
-});
 
 // Collection count badges present in the collection tree DOM
 check("collection count badge rendered", () => {
@@ -130,7 +123,7 @@ check("graph view menu item present", () => {
 check("all feature prefs readable", () => {
   const keys = [
     "readingTime.enable", "titleColumn.enable", "creatorColumn.enable",
-    "ratingColumn.enable", "collectionCounts.enable", "progressColumn.enable",
+    "collectionCounts.enable", "progressColumn.enable",
     "readState.enable", "graphView.enable",
   ];
   const vals = {};

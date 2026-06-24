@@ -17,7 +17,6 @@ const ADDON_ID = config.addonID;
 const ALWAYS_ON = [
   "stylero-title",
   "stylero-creator",
-  "stylero-rating",
   "stylero-readstate",
 ];
 
@@ -126,7 +125,7 @@ describe("columns: registration", function () {
     for (const suffix of ALWAYS_ON) {
       const col = findColumn(suffix)!;
       if (typeof col.renderCell !== "function") {
-        // title/rating/readstate render cells; creator is plain-text (none).
+        // title/readstate render cells; creator is plain-text (none).
         continue;
       }
       const data = col.dataProvider

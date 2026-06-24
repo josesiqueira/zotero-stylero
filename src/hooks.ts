@@ -4,7 +4,6 @@ import { createZToolkit } from "./utils/ztoolkit";
 import { ReadingTimeFactory } from "./modules/readingTime";
 import { TitleColumnFactory } from "./modules/titleColumn";
 import { CreatorColumnFactory } from "./modules/creatorColumn";
-import { RatingColumnFactory } from "./modules/ratingColumn";
 import { CollectionCountsFactory } from "./modules/collectionCounts";
 import { ProgressColumnFactory } from "./modules/progressColumn";
 import { ReadStateFactory } from "./modules/readState";
@@ -27,7 +26,6 @@ async function onStartup() {
   // Item-tree columns.
   await TitleColumnFactory.register();
   await CreatorColumnFactory.register();
-  await RatingColumnFactory.register();
   await ProgressColumnFactory.register();
 
   // Tree / state decorations.
@@ -52,7 +50,6 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
 
   ReadingTimeFactory.registerWindow(win);
   TitleColumnFactory.registerWindow(win);
-  RatingColumnFactory.registerWindow(win);
   ProgressColumnFactory.registerWindow(win);
   CollectionCountsFactory.registerWindow(win);
   ReadStateFactory.registerWindow(win);
@@ -66,7 +63,6 @@ async function onMainWindowUnload(win: _ZoteroTypes.MainWindow): Promise<void> {
   CollectionCountsFactory.unregisterWindow(win);
   ReadingTimeFactory.unregisterWindow(win);
   TitleColumnFactory.unregisterWindow(win);
-  RatingColumnFactory.unregisterWindow(win);
   ProgressColumnFactory.unregisterWindow(win);
   ReadStateFactory.unregisterWindow(win);
   GraphViewFactory.unregisterWindow(win);
@@ -97,7 +93,6 @@ async function onShutdown(): Promise<void> {
   }
   void TitleColumnFactory.unregister();
   CreatorColumnFactory.unregister();
-  RatingColumnFactory.unregister();
   ProgressColumnFactory.unregister();
   CollectionCountsFactory.unregister();
   ReadStateFactory.unregister();

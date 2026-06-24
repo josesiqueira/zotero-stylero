@@ -43,14 +43,14 @@ parallel):
    - `*deprecated*` warnings.
 8. **Optional visual check**: `zotero_screenshot` to eyeball colored tag swatches,
    collection-count badges, and (after enabling them in the column picker) the
-   Title/Rating/Creator columns; open View → "Stylero: Graph View" to verify the
+   Title/Creator columns; open View → "Stylero: Graph View" to verify the
    graph tab renders.
 
 Report a concise pass/fail summary with any failing check names and error lines.
 
 ## Procedure (mocha unit/integration suite)
 
-The canonical suite lives in `test/*.test.ts` (smoke, columns, creator, rating,
+The canonical suite lives in `test/*.test.ts` (smoke, columns, creator,
 collectionCounts, readingStore, graphData, readState). It runs in a dedicated
 Zotero test instance:
 

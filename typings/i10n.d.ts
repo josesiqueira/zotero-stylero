@@ -27,7 +27,6 @@ export type FluentMessageId =
   | 'pref-help'
   | 'pref-progressColumn-enable'
   | 'pref-progressColumn-style'
-  | 'pref-ratingColumn-enable'
   | 'pref-readState-boldAll'
   | 'pref-readState-enable'
   | 'pref-readState-wholeRow'

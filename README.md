@@ -16,9 +16,8 @@ original "Zotero Style" plugin — no code from that project is used.
 
 | Feature | Default | What it does |
 |---|---|---|
-| **Rating column** | on, visible | EndNote-style 5-star rating per item, click to set; stored in the item's `Extra` field under `rate:`. |
 | **Read / unread emphasis** | on, visible | A narrow indicator column; unread items are shown **bold across the whole row**. Mirrors Zotero feed read state, with an option to extend to all items. |
-| **Collection item counts** | on | Count badges on collection rows. Modes: child / offspring (recursive, deduped) / both / both-reversed. |
+| **Collection item counts** | on | Count badges on every collection-tree row (collections, My Library, group libraries, saved searches, Unfiled, Duplicates, Bin, etc.). Collection modes: child / offspring (recursive, deduped) / both / both-reversed. Toggle via **View → Show item counts**. |
 | **Colored tag swatches** | on | Item tags shown as colored dots before the title (part of the Title column). |
 | **Title column** | available (opt-in) | A decorated title column: reading-time **heat background**, file-type icon, odd/even striping, colored tags. Add it from the column picker (it complements the native Title column). |
 | **Creator column** | available (opt-in) | Author list reformatted with a template (`${lastName}`, `${firstName}`, `${firstCreator}`), slicing, custom join, and ellipsis. |
@@ -27,8 +26,8 @@ original "Zotero Style" plugin — no code from that project is used.
 | **Graph view** | on | An Obsidian-style force-directed knowledge graph (related / author / tag / default modes) in its own tab. Open via **View → Stylero: Graph View** or `Ctrl/Cmd+Alt+G`. Dependency-free (no PIXI/d3 bundle). |
 
 ### A note on columns
-Zotero registers custom columns hidden by default; Stylero ships the Rating and
-Read-state columns visible out of the box. Title, Creator and Progress are opt-in:
+Zotero registers custom columns hidden by default; Stylero ships the Read-state
+column visible out of the box. Title, Creator and Progress are opt-in:
 enable them from the item-table column picker (right-click the column header). The
 whole-row unread bold depends on the Read-state indicator column being visible; if
 you hide it, bolding turns off.

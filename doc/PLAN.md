@@ -9,7 +9,7 @@ Per-bucket specs: `doc/plan/bucket-{A..E}.md`. Build contract: `doc/STYLERO_CONT
 |---|---|---|
 | A | Reading-time tracking (16) + shared store | `src/modules/readingStore.ts`, `src/modules/readingTime.ts` |
 | B | Title column (1): heat bg, file-type icon, striping, colored tags | `src/modules/titleColumn.ts`, `addon/content/titleColumn.css` |
-| C | Creator (2), Rating (9), Collection counts (12) | `src/modules/creatorColumn.ts`, `src/modules/ratingColumn.ts`, `src/modules/collectionCounts.ts` + CSS |
+| C | Creator (2), Collection counts (12) | `src/modules/creatorColumn.ts`, `src/modules/collectionCounts.ts` + CSS |
 | D | Progress column (8), Read/Unread whole-row bold (19) | `src/modules/progressColumn.ts`, `src/modules/readState.ts` + CSS |
 | E | Graph View (18): lightweight, no PIXI vendor | `src/modules/graphView.ts`, `src/modules/graphView/*.ts`, `addon/content/graphView.css` |
 
@@ -21,7 +21,7 @@ Each feature = `XxxFactory` with static `register()` / `registerWindow(win)` / o
 
 ## Integration order (onStartup)
 1. `await ReadingTimeFactory.register()` (must precede heat/progress columns)
-2. column registrations: Title, Creator, Rating, Progress
+2. column registrations: Title, Creator, Progress
 3. `CollectionCountsFactory.register()`, `ReadStateFactory.register()`, `GraphViewFactory.register()`
 Then per window: each factory's `registerWindow(win)`.
 

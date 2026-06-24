@@ -28,12 +28,6 @@ pref("creatorColumn.join", "; ");
 pref("creatorColumn.slice", "0");
 pref("creatorColumn.ellipsis", " et al.");
 
-// Rating column (feature 9).
-pref("ratingColumn.enable", true);
-pref("ratingColumn.max", 5);
-pref("ratingColumn.extraKey", "rate");
-pref("ratingColumn.allowClear", true);
-
 // Collection item counts (feature 12).
 pref("collectionCounts.enable", true);
 pref("collectionCounts.mode", "child");

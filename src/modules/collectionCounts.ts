@@ -385,8 +385,14 @@ export class CollectionCountsFactory {
     this.pendingGeneric.add(key);
     Promise.resolve()
       .then(() => row.getItems())
-      .then((items: unknown[]) => {
-        this.genericCache.set(key, Array.isArray(items) ? items.length : 0);
+      .then((items: any[]) => {
+        // Count only top-level items (exclude child attachments/notes) so the
+        // badge matches what the row actually lists, consistent with the
+        // collection counts (which use getChildItems top-level).
+        const count = Array.isArray(items)
+          ? items.filter((it) => it && !it.parentItemID).length
+          : 0;
+        this.genericCache.set(key, count);
       })
       .catch((e: unknown) => {
         ztoolkit.log("[Stylero] generic getItems failed for " + key, e);

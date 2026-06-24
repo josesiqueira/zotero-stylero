@@ -240,6 +240,25 @@ export class GraphViewFactory {
     if (GraphViewFactory.commandRegistered) return;
     GraphViewFactory.commandRegistered = true;
 
+    // Sweep any stale item left by a previous plugin generation whose shutdown
+    // did not fully run, so the View menu never accumulates duplicates.
+    try {
+      ztoolkit.Menu.unregister("stylero-graphview-open");
+    } catch {
+      /* not in this generation's registry */
+    }
+    for (const win of Zotero.getMainWindows()) {
+      try {
+        let el: Element | null;
+        const doc = win.document;
+        while (doc && (el = doc.getElementById("stylero-graphview-open"))) {
+          el.remove();
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     // View-menu item to open the graph tab.
     ztoolkit.Menu.register("menuView", {
       tag: "menuitem",

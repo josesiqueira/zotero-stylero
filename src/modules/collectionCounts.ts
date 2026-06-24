@@ -112,6 +112,9 @@ export class CollectionCountsFactory {
   }
 
   static unregister(): void {
+    // Remove the View-menu item explicitly; ztoolkit.unregisterAll() does not
+    // reliably reclaim it across reloads, which is what caused duplicates.
+    this.removeMenuItems();
     if (this.notifierID) {
       Zotero.Notifier.unregisterObserver(this.notifierID);
       this.notifierID = null;
@@ -170,10 +173,12 @@ export class CollectionCountsFactory {
   // ---- View-menu checkbox + pref observer ----
 
   private static registerViewMenuToggle(): void {
-    if (this.viewMenuRegistered) {
-      return;
-    }
-    this.viewMenuRegistered = true;
+    // The View menu lives in the persistent main window, so a previous plugin
+    // generation (reload/upgrade whose shutdown did not fully run) can leave a
+    // stale "Show item counts" item behind. Sweep any existing copies first,
+    // then register exactly one. This is idempotent.
+    this.removeMenuItems();
+    this.viewMenuRegistered = false;
     try {
       ztoolkit.Menu.register("menuView", {
         tag: "menuitem",
@@ -184,9 +189,33 @@ export class CollectionCountsFactory {
           setPref(ENABLE_PREF, !getPref(ENABLE_PREF));
         },
       });
+      this.viewMenuRegistered = true;
     } catch (e) {
       ztoolkit.log("[Stylero] view-menu toggle registration failed", e);
     }
+    // Make the single surviving item a proper checkbox reflecting the pref.
+    this.syncToggleUI();
+  }
+
+  /** Remove every "Show item counts" menu item across all main windows. */
+  private static removeMenuItems(): void {
+    try {
+      ztoolkit.Menu.unregister(TOGGLE_ID);
+    } catch {
+      /* not in this generation's registry */
+    }
+    for (const win of Zotero.getMainWindows()) {
+      try {
+        const doc = win.document;
+        let el: Element | null;
+        while (doc && (el = doc.getElementById(TOGGLE_ID))) {
+          el.remove();
+        }
+      } catch (e) {
+        ztoolkit.log("[Stylero] counts menu cleanup failed", e);
+      }
+    }
+    this.viewMenuRegistered = false;
   }
 
   private static registerPrefObserver(): void {

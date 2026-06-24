@@ -303,8 +303,11 @@ export class GraphViewFactory {
         type: `${addon.data.config.addonRef}-graph`,
         title: "Graph",
         select: true,
+        // Zotero 9 reads tab.data.icon during select(); omitting `data` throws
+        // "tab.data is undefined" and leaves a broken, blank tab.
+        data: { icon: "" },
         onClose: () => GraphViewFactory.onTabClosed(win),
-      });
+      } as any);
     } catch (e) {
       ztoolkit.log("[Stylero GraphView] Tabs.add failed", e);
       return;

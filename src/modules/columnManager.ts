@@ -1,5 +1,10 @@
 import { getPref } from "../utils/prefs";
 
+// Plugin pref holding the user's saved column layouts, keyed by item-tree id
+// ({ [treeId]: { [dataKey]: prefEntry } }). Hard-coded + stable so the
+// namespaced custom-column dataKeys round-trip byte-for-byte across launches.
+const LAYOUT_PREF = "extensions.zotero.zoterostylero.columnLayouts";
+
 /**
  * Column Manager.
  *
@@ -179,6 +184,9 @@ export class ColumnManagerFactory {
       return;
     }
     this.addEntryPoints(win);
+    // Re-assert the saved column order after the tree has built (defeats the
+    // startup registration race that otherwise scatters custom columns).
+    void this.restoreLayout(win);
   }
 
   static unregisterWindow(win: _ZoteroTypes.MainWindow): void {
@@ -752,6 +760,70 @@ export class ColumnManagerFactory {
     this.renderModel(doc);
   }
 
+  // ---- layout persistence + startup self-heal ---------------------------
+
+  /** All saved layouts: { [treeId]: { [dataKey]: prefEntry } }. */
+  private static loadLayouts(): Record<string, Record<string, any>> {
+    try {
+      const raw = Zotero.Prefs.get(LAYOUT_PREF, true) as string;
+      if (raw) return JSON.parse(raw) || {};
+    } catch (e) {
+      ztoolkit.log("[Stylero] loadLayouts failed", e);
+    }
+    return {};
+  }
+
+  /** Persist the layout the user applied to one tree id. */
+  private static saveLayout(treeId: string, prefs: Record<string, any>): void {
+    if (!treeId) return;
+    try {
+      const all = this.loadLayouts();
+      all[treeId] = prefs;
+      Zotero.Prefs.set(LAYOUT_PREF, JSON.stringify(all), true);
+    } catch (e) {
+      ztoolkit.log("[Stylero] saveLayout failed", e);
+    }
+  }
+
+  /**
+   * Re-assert the user's saved column order on the active view after startup.
+   *
+   * Zotero builds the item tree and re-derives column ordinals BEFORE the
+   * plugin's custom columns register, so a saved custom-column ordinal is lost
+   * on a cold start (the column appends at the end / scatters). We wait for the
+   * tree to be ready, then re-apply the saved layout for its tree id and
+   * force-flush, so the user's order survives every restart regardless of the
+   * registration race. Idempotent: re-applying the same layout is a no-op.
+   */
+  static async restoreLayout(win: _ZoteroTypes.MainWindow): Promise<void> {
+    try {
+      const layouts = this.loadLayouts();
+      if (!Object.keys(layouts).length) return;
+      // Wait (up to ~3s) for the items view to exist with a tree id.
+      let iv: any = null;
+      for (let i = 0; i < 30; i++) {
+        iv = (win as any).ZoteroPane?.itemsView;
+        if (iv && iv.id && typeof iv._getColumnPrefs === "function") break;
+        iv = null;
+        await new Promise<void>((r) => win.setTimeout(r, 100));
+      }
+      if (!iv) return;
+      const saved = layouts[iv.id];
+      if (!saved) return;
+      iv._columnPrefs = saved;
+      iv._storeColumnPrefs?.(saved);
+      iv._columnPrefs = saved;
+      if (typeof iv._writeColumnPrefsToFile === "function") {
+        await iv._writeColumnPrefsToFile(true);
+      }
+      iv.forceUpdate?.();
+      iv.refreshAndMaintainSelection?.();
+      ztoolkit.log(`[Stylero] restored saved column layout for ${iv.id}`);
+    } catch (e) {
+      ztoolkit.log("[Stylero] restoreLayout failed", e);
+    }
+  }
+
   private static async applyModel(doc: Document): Promise<void> {
     const main = this.mainWindow;
     const iv = (main as any)?.ZoteroPane?.itemsView;
@@ -775,6 +847,10 @@ export class ColumnManagerFactory {
       }
       newPrefs[row.dataKey] = entry;
     }
+
+    // Persist this layout so it can be re-asserted on the next startup (the
+    // tree re-derives custom-column ordinals before our columns register).
+    this.saveLayout(iv.id, newPrefs);
 
     try {
       // Wholesale-replace THIS tree's store: this is how purged ghosts get

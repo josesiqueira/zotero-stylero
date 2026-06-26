@@ -504,11 +504,32 @@ export class ColumnManagerFactory {
   // ------------------------------------------------------------------- views
 
   private static buildSkeleton(doc: Document): void {
-    const root = doc.getElementById("stylero-cm-root");
+    const root = doc.getElementById("stylero-cm-root") as unknown as HTMLElement;
     if (!root) {
       return;
     }
     root.textContent = "";
+
+    // Load-bearing layout applied INLINE (not just via columnManager.css).
+    // Reason: Zotero aggressively caches chrome://.../content/*.css, so a
+    // reinstall can keep serving an old stylesheet that lacks the flex/height/
+    // min-height:0 fix, which silently breaks scrolling (the list grows to full
+    // content height and pushes the footer off a clipped window with no
+    // scrollbar). Inline styles ride the JS bundle, which DOES reload, so the
+    // fix survives a stale CSS cache. The min-height:0 entries are the crux:
+    // they defeat the default flex min-height:auto that otherwise refuses to
+    // shrink the list below its content height. (CSS keeps the same rules for
+    // fresh installs and theming.)
+    try {
+      (doc.documentElement as unknown as HTMLElement).style.height = "100%";
+    } catch {
+      /* ignore */
+    }
+    root.style.display = "flex";
+    root.style.flexDirection = "column";
+    root.style.height = "100%";
+    root.style.minHeight = "0";
+    root.style.boxSizing = "border-box";
 
     const intro = el(doc, "div", {
       class: "cm-intro",
@@ -519,16 +540,22 @@ export class ColumnManagerFactory {
     root.appendChild(intro);
 
     root.appendChild(el(doc, "div", { class: "cm-section-label", text: "Preview (final layout)" }));
-    const preview = el(doc, "div", { class: "cm-preview" });
+    const preview = el(doc, "div", {
+      class: "cm-preview",
+      style: "flex: 0 0 auto;",
+    });
     this.previewEl = preview;
     root.appendChild(preview);
 
     root.appendChild(el(doc, "div", { class: "cm-section-label", text: "Columns" }));
-    const list = el(doc, "div", { class: "cm-list" });
+    const list = el(doc, "div", {
+      class: "cm-list",
+      style: "flex: 1 1 auto; min-height: 0; overflow-y: auto;",
+    });
     this.listEl = list;
     root.appendChild(list);
 
-    const footer = el(doc, "div", { class: "cm-footer" });
+    const footer = el(doc, "div", { class: "cm-footer", style: "flex: 0 0 auto;" });
     const repair = el(doc, "button", {
       class: "cm-btn cm-repair",
       text: "Repair ordinals + purge ghosts",
@@ -576,7 +603,7 @@ export class ColumnManagerFactory {
         text: row.label,
         style: `flex-basis:${Math.max(28, Math.round(row.width * 0.45))}px`,
       });
-      chip.setAttribute("title", `${row.label} — ${Math.round(row.width)}px`);
+      chip.setAttribute("title", `${row.label}, ${Math.round(row.width)}px`);
       preview.appendChild(chip);
     }
   }
@@ -614,7 +641,7 @@ export class ColumnManagerFactory {
 
       const ord = el(doc, "span", {
         class: "cm-ord",
-        text: row.purge ? "—" : String(projected),
+        text: row.purge ? "-" : String(projected),
       });
       if (!row.purge) projected++;
       r.appendChild(ord);

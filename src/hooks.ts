@@ -11,6 +11,7 @@ import { RatingColumnFactory } from "./modules/ratingColumn";
 import { ItemRowDecorator } from "./modules/itemRowDecorator";
 import { ThemeToggleFactory } from "./modules/themeToggle";
 import { ColumnManagerFactory } from "./modules/columnManager";
+import { ReaderSelectionFactory } from "./modules/readerSelection";
 
 async function onStartup() {
   await Promise.all([
@@ -40,6 +41,9 @@ async function onStartup() {
 
   // Column Manager (toolbar button + View menu + header-menu entry points).
   ColumnManagerFactory.register();
+
+  // Mendeley-style PDF selection overlay.
+  ReaderSelectionFactory.register();
 
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
@@ -119,6 +123,7 @@ async function onShutdown(): Promise<void> {
   ReadStateFactory.unregister();
   ThemeToggleFactory.unregister();
   ColumnManagerFactory.unregister();
+  ReaderSelectionFactory.unregister();
 
   ztoolkit.unregisterAll();
   addon.data.dialog?.window?.close();

@@ -70,6 +70,31 @@
     <checkbox preference="columnManager.enable" data-l10n-id="pref-columnManager-enable" />
   </groupbox>
 
+  <groupbox>
+    <label><html:h2 data-l10n-id="pref-group-readerSelection"></html:h2></label>
+    <checkbox preference="readerSelection.enable" data-l10n-id="pref-readerSelection-enable" />
+    <vbox style="margin-inline-start: 1.5em;">
+      <hbox align="center">
+        <html:label for="zs-rs-color" data-l10n-id="pref-readerSelection-color"></html:label>
+        <html:input type="color" id="zs-rs-color" preference="readerSelection.color" />
+      </hbox>
+      <hbox align="center">
+        <html:label for="zs-rs-opacity" data-l10n-id="pref-readerSelection-opacity"></html:label>
+        <html:input type="number" id="zs-rs-opacity" preference="readerSelection.opacity" min="0" max="100" step="5" style="width: 5em;" />
+      </hbox>
+      <hbox align="center">
+        <html:label for="zs-rs-tightness" data-l10n-id="pref-readerSelection-tightness"></html:label>
+        <html:input type="number" id="zs-rs-tightness" preference="readerSelection.tightness" min="30" max="100" step="1" style="width: 5em;" />
+      </hbox>
+      <separator />
+      <checkbox preference="readerSelection.handles" data-l10n-id="pref-readerSelection-handles" />
+      <hbox align="center" style="margin-inline-start: 1.5em;">
+        <html:label for="zs-rs-handleColor" data-l10n-id="pref-readerSelection-handleColor"></html:label>
+        <html:input type="color" id="zs-rs-handleColor" preference="readerSelection.handleColor" />
+      </hbox>
+    </vbox>
+  </groupbox>
+
   <vbox>
     <html:label
       data-l10n-id="pref-help"

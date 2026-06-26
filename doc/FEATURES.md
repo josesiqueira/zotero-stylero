@@ -4,7 +4,7 @@ This is the authoritative description of what the shipped plugin actually does,
 verified against the source. Where the older `doc/plan/bucket-*.md` design specs
 disagree, this file wins. Target: Zotero 9 (9.0.4 and later).
 
-The plugin registers eight user-facing features plus one shared internal helper.
+The plugin registers nine user-facing features plus one shared internal helper.
 Each feature is a `XxxFactory` class under `src/modules/`, wired in `src/hooks.ts`.
 
 ## Features
@@ -79,6 +79,25 @@ auto), the same preference Zotero's Settings, General, Appearance radio writes, 
 changes the whole app. The icon shows the action a click performs (moon while light,
 sun while dark) and stays in sync via pref and system-theme listeners.
 
+### Reader selection overlay (`readerSelection.ts`)
+On by default (toggle via `readerSelection.enable`). Replaces Zotero's native
+light-blue text-selection band in the PDF reader with a snug, Mendeley-style colored
+band. The native selection mechanics (copy, annotate, right-click) are preserved; only
+the visual appearance changes.
+
+Visual anatomy: the band sits tightly around the selected text rather than spanning the
+full line height. Optional end-handle bars (`readerSelection.handles`) add a filled
+circle at the top of the selection start and at the bottom of the selection end, in the
+handle color (`readerSelection.handleColor`), echoing Mendeley's selection handles.
+
+The feature manages PDF reader windows itself and does not participate in the
+`registerWindow` / `unregisterWindow` main-window lifecycle. It hooks into reader
+events on `register()` and cleans up fully on `unregister()`. There is no
+`onMainWindowLoad` / `onMainWindowUnload` involvement.
+
+> Note: this styles the live text selection only. Saved highlight annotations are
+> unaffected and continue to use Zotero's annotation rendering.
+
 ### Shared row decorator (`itemRowDecorator.ts`) — internal
 Not a user feature. A single monkey-patch of the item-tree row renderer that lets
 features post-process each row. Currently used by the rating column (title-swatch
@@ -119,6 +138,12 @@ settings pane; the rest are tunable via the config editor.
 | `readState.wholeRow` | `true` | Read/unread emphasis |
 | `readState.readKeys` | `""` | Read/unread emphasis (internal) |
 | `themeToggle.enable` | `true` | Light/dark toggle |
+| `readerSelection.enable` | `true` | Reader selection overlay |
+| `readerSelection.color` | `#8C6FE6` | Reader selection overlay (band color) |
+| `readerSelection.opacity` | `40` | Reader selection overlay (band opacity, percent 0-100) |
+| `readerSelection.tightness` | `72` | Reader selection overlay (band height as percent of line height; 100 = full height) |
+| `readerSelection.handles` | `true` | Reader selection overlay (ball end-handles) |
+| `readerSelection.handleColor` | `#2F6BE0` | Reader selection overlay (handle bar/ball color) |
 
 ## Settings pane groups
 Item-table columns (Creator + template, Progress + style, Unread, Rating + hide),

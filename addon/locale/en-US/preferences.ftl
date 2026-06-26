@@ -37,4 +37,14 @@ pref-group-tools = Tools
 pref-columnManager-enable =
     .label = Column Manager (reorder / show-hide / resize columns, purge ghost columns)
 
+pref-group-readerSelection = Reader selection (PDF)
+pref-readerSelection-enable =
+    .label = Custom Mendeley-style text selection
+pref-readerSelection-color = Selection fill color
+pref-readerSelection-opacity = Opacity (%)
+pref-readerSelection-tightness = Tightness (% of line height; how snugly the band hugs the text)
+pref-readerSelection-handles =
+    .label = Show end-handle bars
+pref-readerSelection-handleColor = Handle color
+
 pref-help = { $name } build { $version } { $time }

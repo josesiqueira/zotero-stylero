@@ -50,3 +50,11 @@ pref("themeToggle.enable", true);
 // uninstalled plugins). Adds a toolbar button, a View-menu item, and a
 // "Manage columns…" entry to the column-header context menu.
 pref("columnManager.enable", true);
+
+// Reader Selection (feature RS) — Mendeley-style PDF text-selection overlay.
+pref("readerSelection.enable", true);
+pref("readerSelection.color", "#8C6FE6");
+pref("readerSelection.opacity", 40); // percent (0-100); /100 in code. Float prefs are unsafe in Mozilla prefs.
+pref("readerSelection.tightness", 72); // percent of line-box height (30-100)
+pref("readerSelection.handles", true);
+pref("readerSelection.handleColor", "#2F6BE0");

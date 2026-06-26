@@ -36,6 +36,12 @@ declare namespace _ZoteroTypes {
       "readState.readKeys": string;
       "themeToggle.enable": boolean;
       "columnManager.enable": boolean;
+      "readerSelection.enable": boolean;
+      "readerSelection.color": string;
+      "readerSelection.opacity": number;
+      "readerSelection.tightness": number;
+      "readerSelection.handles": boolean;
+      "readerSelection.handleColor": string;
     };
   }
 }

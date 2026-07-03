@@ -1,9 +1,36 @@
 import { getPref } from "../utils/prefs";
 
-// Plugin pref holding the user's saved column layouts, keyed by item-tree id
-// ({ [treeId]: { [dataKey]: prefEntry } }). Hard-coded + stable so the
-// namespaced custom-column dataKeys round-trip byte-for-byte across launches.
+// LEGACY (migration-only). Older builds stored one layout PER item-tree id
+// ({ [treeId]: { [dataKey]: prefEntry } }). That is exactly what caused the
+// cross-view divergence bug (a layout applied while on "Recently Read" never
+// touched the "default" tree that backs My Library / collections / searches).
+// Kept solely so loadCanonical() can migrate an old install once. The
+// authoritative store is now CANON_PREF below.
 const LAYOUT_PREF = "extensions.zotero.zoterostylero.columnLayouts";
+
+// AUTHORITATIVE store: ONE canonical layout, independent of tree id — an
+// ordered list of columns. This is the single place the user's column choice
+// lives; it is projected onto every target tree id so the layout looks
+// identical in every view and survives a full restart.
+const CANON_PREF = "extensions.zotero.zoterostylero.canonicalLayout";
+
+// The item-tree ids the canonical layout is written to. `item-tree-main-default`
+// backs My Library, EVERY collection and EVERY saved search (incl. "Categories");
+// `item-tree-main-recentlyRead` is the separate "Recently Read" view. Both are
+// in the `main` family where the stylero columns are enabled. Advanced-search /
+// feeds are intentionally out of scope (stylero columns are not enabled there).
+const TARGET_TREE_IDS = [
+  "item-tree-main-default",
+  "item-tree-main-recentlyRead",
+] as const;
+
+/** One column in the tree-id-independent canonical layout. */
+interface CanonEntry {
+  dataKey: string;
+  hidden: boolean;
+  /** Only set when the user deliberately chose a width (drives all views). */
+  width?: number;
+}
 
 /**
  * Column Manager.
@@ -137,6 +164,12 @@ export class ColumnManagerFactory {
     HTMLLinkElement
   >();
   private static prefObserverIDs: symbol[] = [];
+  // Per-window view-change listeners (collectionsView.onSelect), so switching
+  // to another collection/search/Recently Read re-asserts the canonical layout.
+  private static readonly selectListeners = new WeakMap<
+    _ZoteroTypes.MainWindow,
+    () => void
+  >();
 
   // --- live dialog state (one dialog at a time) ---
   private static dialogWindow: any = null;
@@ -187,9 +220,12 @@ export class ColumnManagerFactory {
     // Re-assert the saved column order after the tree has built (defeats the
     // startup registration race that otherwise scatters custom columns).
     void this.restoreLayout(win);
+    // Re-assert on every view change so the layout is identical everywhere.
+    void this.attachViewChangeHook(win);
   }
 
   static unregisterWindow(win: _ZoteroTypes.MainWindow): void {
+    this.detachViewChangeHook(win);
     this.removeEntryPoints(win);
   }
 
@@ -441,16 +477,7 @@ export class ColumnManagerFactory {
       if (Number.isFinite(w) && w > 0) widthByKey.set(c.dataKey, w);
     }
 
-    const registered = new Set<string>();
-    try {
-      const mgr: any = Zotero.ItemTreeManager;
-      const custom = mgr.getCustomColumns ? mgr.getCustomColumns() : [];
-      for (const c of custom || []) {
-        if (c && c.dataKey) registered.add(c.dataKey);
-      }
-    } catch (e) {
-      ztoolkit.log("[Stylero] getCustomColumns failed", e);
-    }
+    const registered = this.registeredKeys();
 
     // Detect original ordinal collisions (the actual bug being surfaced).
     const ordinalCounts = new Map<number, number>();
@@ -760,9 +787,16 @@ export class ColumnManagerFactory {
     this.renderModel(doc);
   }
 
-  // ---- layout persistence + startup self-heal ---------------------------
+  // ---- canonical layout: one authoritative source, projected everywhere ----
+  //
+  // The bug this replaces: the layout used to be saved and restored PER active
+  // tree id, so applying while on one view (e.g. Recently Read) never reached
+  // the "default" tree that backs My Library / collections / searches. Now there
+  // is ONE canonical layout (CANON_PREF). It is projected onto EVERY target tree
+  // id at three moments — Apply, startup, and every view change — so the columns
+  // look identical everywhere and survive a full restart.
 
-  /** All saved layouts: { [treeId]: { [dataKey]: prefEntry } }. */
+  /** LEGACY read for one-time migration only. */
   private static loadLayouts(): Record<string, Record<string, any>> {
     try {
       const raw = Zotero.Prefs.get(LAYOUT_PREF, true) as string;
@@ -773,32 +807,231 @@ export class ColumnManagerFactory {
     return {};
   }
 
-  /** Persist the layout the user applied to one tree id. */
-  private static saveLayout(treeId: string, prefs: Record<string, any>): void {
-    if (!treeId) return;
+  /** Round a possibly string/float width to a positive int, else undefined. */
+  private static normalizeWidth(w: unknown): number | undefined {
+    const n = Math.round(Number(w));
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+
+  /** dataKeys of the plugin columns currently registered with Zotero. */
+  private static registeredKeys(): Set<string> {
+    const set = new Set<string>();
     try {
-      const all = this.loadLayouts();
-      all[treeId] = prefs;
-      Zotero.Prefs.set(LAYOUT_PREF, JSON.stringify(all), true);
+      const mgr: any = Zotero.ItemTreeManager;
+      const custom = mgr.getCustomColumns ? mgr.getCustomColumns() : [];
+      for (const c of custom || []) {
+        if (c && c.dataKey) set.add(c.dataKey);
+      }
     } catch (e) {
-      ztoolkit.log("[Stylero] saveLayout failed", e);
+      ztoolkit.log("[Stylero] getCustomColumns failed", e);
+    }
+    return set;
+  }
+
+  /** This plugin's OWN custom-column keys in the canonical layout (for the
+   * startup race gate). Excludes other plugins' columns (e.g. open-citations),
+   * which may be legitimately absent, so we never wait forever on them. */
+  private static ownColumnKeys(canon: CanonEntry[]): string[] {
+    const id = addon.data.config.addonID;
+    return canon
+      .map((e) => e.dataKey)
+      .filter((k) => k.includes("@") && unescapeKey(k).startsWith(`${id}-`));
+  }
+
+  /**
+   * The authoritative, tree-id-independent layout. If CANON_PREF is empty,
+   * migrate ONCE from the legacy per-tree store's `item-tree-main-default`
+   * (its order was the user's last desired order), then persist + return it.
+   */
+  private static loadCanonical(): CanonEntry[] {
+    try {
+      const raw = Zotero.Prefs.get(CANON_PREF, true) as string;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed as CanonEntry[];
+      }
+    } catch (e) {
+      ztoolkit.log("[Stylero] loadCanonical failed", e);
+    }
+    // One-time migration from the legacy per-tree store.
+    const legacy = this.loadLayouts()["item-tree-main-default"];
+    if (legacy && typeof legacy === "object") {
+      const canon = Object.keys(legacy)
+        .map((k) => ({ k, e: legacy[k] || {} }))
+        .sort(
+          (a, b) =>
+            (typeof a.e.ordinal === "number" ? a.e.ordinal : 9999) -
+            (typeof b.e.ordinal === "number" ? b.e.ordinal : 9999),
+        )
+        .map(({ k, e }) => {
+          const entry: CanonEntry = { dataKey: k, hidden: !!e.hidden };
+          const w = this.normalizeWidth(e.width);
+          if (w != null) entry.width = w;
+          return entry;
+        });
+      if (canon.length) {
+        this.saveCanonical(canon);
+        return canon;
+      }
+    }
+    return [];
+  }
+
+  private static saveCanonical(canon: CanonEntry[]): void {
+    try {
+      Zotero.Prefs.set(CANON_PREF, JSON.stringify(canon), true);
+    } catch (e) {
+      ztoolkit.log("[Stylero] saveCanonical failed", e);
     }
   }
 
   /**
-   * Re-assert the user's saved column order on the active view after startup.
-   *
-   * Zotero builds the item tree and re-derives column ordinals BEFORE the
-   * plugin's custom columns register, so a saved custom-column ordinal is lost
-   * on a cold start (the column appends at the end / scatters). We wait for the
-   * tree to be ready, then re-apply the saved layout for its tree id and
-   * force-flush, so the user's order survives every restart regardless of the
-   * registration race. Idempotent: re-applying the same layout is a no-op.
+   * Project the canonical layout onto ONE tree's prefs blob: dense ordinals
+   * 0..N-1 (kills duplicate-ordinal scramble), ghosts dropped (namespaced +
+   * unregistered, e.g. stylero-title), widths normalized. Columns present in
+   * `existing` but absent from the canonical order (a view's own built-in
+   * extras) are appended, hidden, after the canonical block. sortDirection is
+   * preserved per-view from `existing` (we control order/visibility/width, not
+   * the user's live sort).
+   */
+  private static projectOnto(
+    canon: CanonEntry[],
+    existing: Record<string, any>,
+    registered: Set<string>,
+  ): Record<string, any> {
+    const isGhost = (key: string) =>
+      key.includes("@") && !registered.has(key);
+    const out: Record<string, any> = {};
+    let ordinal = 0;
+    const placed = new Set<string>();
+
+    for (const entry of canon) {
+      const key = entry.dataKey;
+      if (placed.has(key) || isGhost(key)) continue;
+      const prev = existing[key] || {};
+      const merged: any = { ...prev, dataKey: key, ordinal: ordinal++ };
+      merged.hidden = !!entry.hidden;
+      const w = this.normalizeWidth(entry.width ?? prev.width);
+      if (w != null) merged.width = w;
+      else delete merged.width;
+      out[key] = merged;
+      placed.add(key);
+    }
+
+    // Append any real column this view already had that the canonical layout
+    // doesn't mention (keeps view-specific built-ins available, just hidden).
+    for (const key of Object.keys(existing)) {
+      if (placed.has(key) || isGhost(key)) continue;
+      const prev = existing[key] || {};
+      const merged: any = {
+        ...prev,
+        dataKey: key,
+        ordinal: ordinal++,
+        hidden: true,
+      };
+      const w = this.normalizeWidth(prev.width);
+      if (w != null) merged.width = w;
+      else delete merged.width;
+      out[key] = merged;
+      placed.add(key);
+    }
+    return out;
+  }
+
+  /**
+   * Write the canonical layout to the ACTIVE view via the live column API.
+   * Order matters: store + re-render FIRST so Zotero settles the ordinals, then
+   * cancel any pending debounced (60s) write, then force-flush LAST so the
+   * settled order lands on disk and cannot be clobbered.
+   */
+  private static async applyToActive(iv: any, win: any): Promise<void> {
+    if (!iv || !iv.id) return;
+    // Only ever touch the scoped target trees. Out-of-scope views (feeds, group
+    // libraries, advanced search, My Publications, Trash) keep their own native
+    // columns untouched, so we never inject the stylero columns where they
+    // aren't wanted.
+    if (!(TARGET_TREE_IDS as readonly string[]).includes(iv.id)) return;
+    try {
+      const canon = this.loadCanonical();
+      if (!canon.length) return;
+      const existing = (iv._getColumnPrefs && iv._getColumnPrefs()) || {};
+      const prefs = this.projectOnto(canon, existing, this.registeredKeys());
+      iv._columnPrefs = prefs;
+      iv._storeColumnPrefs?.(prefs);
+      iv._columnPrefs = prefs;
+      iv.forceUpdate?.();
+      iv.refreshAndMaintainSelection?.();
+      if (iv._writeColumnsTimeout) {
+        try {
+          win.clearTimeout(iv._writeColumnsTimeout);
+        } catch {
+          /* ignore */
+        }
+        iv._writeColumnsTimeout = null;
+      }
+      if (typeof iv._writeColumnPrefsToFile === "function") {
+        await iv._writeColumnPrefsToFile(true);
+      }
+    } catch (e) {
+      ztoolkit.log("[Stylero] applyToActive failed", e);
+    }
+  }
+
+  /**
+   * Seed treePrefs.json for every target tree id that is NOT the active one.
+   * Zotero's own writer only ever persists persistSettings[this.id], so the
+   * inactive views (e.g. Recently Read while you sit on a collection) can only
+   * be fixed by editing the file directly. Read-modify-write, atomically, so
+   * other tree ids in the file are preserved.
+   */
+  private static async seedInactiveTrees(activeId: string): Promise<void> {
+    try {
+      const canon = this.loadCanonical();
+      if (!canon.length) return;
+      const registered = this.registeredKeys();
+      const path = PathUtils.join(
+        (Zotero as any).Profile.dir,
+        "treePrefs.json",
+      );
+
+      let persist: Record<string, any> = {};
+      try {
+        persist = ((await IOUtils.readJSON(path)) as Record<string, any>) || {};
+      } catch {
+        persist = {}; // absent or unreadable: start fresh, preserve nothing lost
+      }
+      if (typeof persist !== "object" || persist === null) return;
+
+      let changed = false;
+      for (const id of TARGET_TREE_IDS) {
+        if (id === activeId) continue;
+        persist[id] = this.projectOnto(canon, persist[id] || {}, registered);
+        changed = true;
+      }
+      if (!changed) return;
+
+      const tmp = `${path}.stylero.tmp`;
+      await IOUtils.writeJSON(tmp, persist);
+      await IOUtils.move(tmp, path, { noOverwrite: false });
+      ztoolkit.log("[Stylero] seeded inactive tree layouts");
+    } catch (e) {
+      ztoolkit.log("[Stylero] seedInactiveTrees failed", e);
+    }
+  }
+
+  /**
+   * Startup self-heal. Waits for the items view AND for this plugin's own
+   * custom columns to actually register (so an early projection can't mistake a
+   * not-yet-registered stylero column for a ghost and drop it — the structural
+   * fix for "order lost on restart"). Then applies to the active view, seeds the
+   * inactive ones, and schedules two delayed re-asserts to outlast any late
+   * async re-derivation. Idempotent.
    */
   static async restoreLayout(win: _ZoteroTypes.MainWindow): Promise<void> {
     try {
-      const layouts = this.loadLayouts();
-      if (!Object.keys(layouts).length) return;
+      const canon = this.loadCanonical();
+      if (!canon.length) return;
+
       // Wait (up to ~3s) for the items view to exist with a tree id.
       let iv: any = null;
       for (let i = 0; i < 30; i++) {
@@ -808,20 +1041,90 @@ export class ColumnManagerFactory {
         await new Promise<void>((r) => win.setTimeout(r, 100));
       }
       if (!iv) return;
-      const saved = layouts[iv.id];
-      if (!saved) return;
-      iv._columnPrefs = saved;
-      iv._storeColumnPrefs?.(saved);
-      iv._columnPrefs = saved;
-      if (typeof iv._writeColumnPrefsToFile === "function") {
-        await iv._writeColumnPrefsToFile(true);
+      try {
+        await iv.waitForLoad?.();
+      } catch {
+        /* ignore */
       }
-      iv.forceUpdate?.();
-      iv.refreshAndMaintainSelection?.();
-      ztoolkit.log(`[Stylero] restored saved column layout for ${iv.id}`);
+
+      // Wait (up to ~3s) until our own columns are registered.
+      const need = this.ownColumnKeys(canon);
+      for (let i = 0; i < 30 && need.length; i++) {
+        const reg = this.registeredKeys();
+        if (need.every((k) => reg.has(k))) break;
+        await new Promise<void>((r) => win.setTimeout(r, 100));
+      }
+
+      await this.applyToActive(iv, win);
+      await this.seedInactiveTrees(iv.id);
+      ztoolkit.log(`[Stylero] restored canonical column layout on ${iv.id}`);
+
+      // Outlast any late registration / async refresh cascade.
+      const reassert = () => {
+        const iv2 = (win as any).ZoteroPane?.itemsView;
+        if (iv2?.id && addon?.data.alive) void this.applyToActive(iv2, win);
+      };
+      win.setTimeout(reassert, 800);
+      win.setTimeout(reassert, 2500);
     } catch (e) {
       ztoolkit.log("[Stylero] restoreLayout failed", e);
     }
+  }
+
+  /**
+   * Re-assert the canonical layout whenever the user switches view. Fires after
+   * collectionsView.onSelect, i.e. after changeCollectionTreeRow has swapped in
+   * the new tree id and loaded its (possibly scrambled) prefs — the exact moment
+   * to override. Only touches the active view (a click must not rewrite the
+   * whole file); inactive ids were already seeded at Apply/startup.
+   */
+  private static async attachViewChangeHook(
+    win: _ZoteroTypes.MainWindow,
+  ): Promise<void> {
+    try {
+      if (this.selectListeners.has(win)) return;
+      // Wait (up to ~3s) for collectionsView with an onSelect emitter.
+      let cv: any = null;
+      for (let i = 0; i < 30; i++) {
+        cv = (win as any).ZoteroPane?.collectionsView;
+        if (cv && typeof cv.onSelect?.addListener === "function") break;
+        cv = null;
+        await new Promise<void>((r) => win.setTimeout(r, 100));
+      }
+      if (!cv) return;
+
+      const cb = async () => {
+        if (!addon?.data.alive) return;
+        // Respect a runtime disable of the feature (the addon stays alive when
+        // only the enable pref flips, so this is not covered by the check above).
+        if (!getPref(ENABLE_PREF)) return;
+        if (!this.loadCanonical().length) return;
+        const iv = (win as any).ZoteroPane?.itemsView;
+        if (!iv?.id) return;
+        try {
+          await iv._itemTreeLoadingDeferred?.promise;
+        } catch {
+          /* ignore */
+        }
+        const iv2 = (win as any).ZoteroPane?.itemsView;
+        if (iv2?.id) void this.applyToActive(iv2, win);
+      };
+      cv.onSelect.addListener(cb);
+      this.selectListeners.set(win, cb);
+    } catch (e) {
+      ztoolkit.log("[Stylero] attachViewChangeHook failed", e);
+    }
+  }
+
+  private static detachViewChangeHook(win: _ZoteroTypes.MainWindow): void {
+    const cb = this.selectListeners.get(win);
+    if (!cb) return;
+    try {
+      (win as any).ZoteroPane?.collectionsView?.onSelect?.removeListener(cb);
+    } catch {
+      /* already gone */
+    }
+    this.selectListeners.delete(win);
   }
 
   private static async applyModel(doc: Document): Promise<void> {
@@ -832,43 +1135,26 @@ export class ColumnManagerFactory {
       return;
     }
 
-    const newPrefs: Record<string, any> = {};
-    let ordinal = 0;
-    for (const row of this.model) {
-      if (row.purge) continue;
-      const entry: any = {
-        ...(row.orig || {}),
-        dataKey: row.dataKey,
-        ordinal: ordinal++,
-        hidden: !!row.hidden,
-      };
-      if (row.widthTouched && Number.isFinite(row.width)) {
-        entry.width = Math.round(row.width);
-      }
-      newPrefs[row.dataKey] = entry;
-    }
+    // The dialog model IS the new canonical layout (order + hidden + width).
+    // Ghosts/purged rows are excluded, so ONE Apply purges them from every tree.
+    const canon: CanonEntry[] = this.model
+      .filter((r) => !r.purge && !r.isGhost)
+      .map((r) => {
+        const e: CanonEntry = { dataKey: r.dataKey, hidden: !!r.hidden };
+        // Only make a width authoritative-everywhere when the user deliberately
+        // chose it via the dialog slider. Otherwise leave it undefined so
+        // projectOnto keeps each view's existing (incl. native drag-resized)
+        // width instead of stamping one canonical value over every view.
+        if (r.widthTouched) {
+          const w = this.normalizeWidth(r.width);
+          if (w != null) e.width = w;
+        }
+        return e;
+      });
+    this.saveCanonical(canon);
 
-    // Persist this layout so it can be re-asserted on the next startup (the
-    // tree re-derives custom-column ordinals before our columns register).
-    this.saveLayout(iv.id, newPrefs);
-
-    try {
-      // Wholesale-replace THIS tree's store: this is how purged ghosts get
-      // dropped (_storeColumnPrefs only assigns, never deletes). Safe because
-      // _writeColumnPrefsToFile only writes persistSettings[this.id].
-      iv._columnPrefs = newPrefs;
-      if (typeof iv._storeColumnPrefs === "function") {
-        iv._storeColumnPrefs(newPrefs); // syncs active _columns + re-sorts
-      }
-      iv._columnPrefs = newPrefs; // ensure purges stick if _storeColumnPrefs rebuilt
-      if (typeof iv._writeColumnPrefsToFile === "function") {
-        await iv._writeColumnPrefsToFile(true);
-      }
-      iv.forceUpdate?.(); // re-render the header (column order + widths)
-      iv.refreshAndMaintainSelection?.();
-    } catch (e) {
-      ztoolkit.log("[Stylero] columnManager apply failed", e);
-    }
+    await this.applyToActive(iv, main);
+    await this.seedInactiveTrees(iv.id);
 
     // Re-read live state so the dialog reflects exactly what was committed.
     this.model = this.buildModel(iv);

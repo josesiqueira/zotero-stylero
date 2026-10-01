@@ -1,6 +1,5 @@
 # Zotero Stylero
 
-[![Zotero 9+](https://img.shields.io/badge/Zotero-9%2B-CC2936?style=flat-square&logo=zotero&logoColor=white)](https://www.zotero.org)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg?style=flat-square)](LICENSE)
 
 Zotero Stylero is a styling plugin for Zotero. It adds styled item-table columns,
@@ -40,13 +39,6 @@ behavior. A full as-built list of every preference is in
 ## Install
 Download `zotero-stylero.xpi` from the [latest release](../../releases/latest), then
 in Zotero: Tools, Plugins, gear icon, Install Plugin From File, and pick the `.xpi`.
-
-## Compatibility
-
-Requires Zotero 9 or later. The exact range each release supports is
-declared in `manifest.json` (`strict_max_version`). When a new Zotero major
-ships, the ceiling is raised through `update.json`, so installed copies stay
-enabled without a reinstall.
 
 ## Development
 ```bash

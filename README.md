@@ -1,9 +1,9 @@
 # Zotero Stylero
 
-[![Zotero 9](https://img.shields.io/badge/Zotero-9-CC2936?style=flat-square&logo=zotero&logoColor=white)](https://www.zotero.org)
+[![Zotero 9+](https://img.shields.io/badge/Zotero-9%2B-CC2936?style=flat-square&logo=zotero&logoColor=white)](https://www.zotero.org)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg?style=flat-square)](LICENSE)
 
-Zotero Stylero is a styling plugin for Zotero 9. It adds styled item-table columns,
+Zotero Stylero is a styling plugin for Zotero. It adds styled item-table columns,
 collection counts, reading-time tracking, read/unread emphasis, and a one-click
 light/dark switch. It is deliberately lightweight and dependency-free: the only
 runtime dependency is the Zotero plugin toolkit.
@@ -42,8 +42,11 @@ Download `zotero-stylero.xpi` from the [latest release](../../releases/latest), 
 in Zotero: Tools, Plugins, gear icon, Install Plugin From File, and pick the `.xpi`.
 
 ## Compatibility
-Built and tested for Zotero 9 (9.0.4 and later). The manifest version range is
-permissive, but only Zotero 9 is supported.
+
+Requires Zotero 9 or later. The exact range each release supports is
+declared in `manifest.json` (`strict_max_version`). When a new Zotero major
+ships, the ceiling is raised through `update.json`, so installed copies stay
+enabled without a reinstall.
 
 ## Development
 ```bash

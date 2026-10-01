@@ -2,7 +2,7 @@
 
 This is the authoritative description of what the shipped plugin actually does,
 verified against the source. Where the older `doc/plan/bucket-*.md` design specs
-disagree, this file wins. Target: Zotero 9 (9.0.4 and later).
+disagree, this file wins.
 
 The plugin registers nine user-facing features plus one shared internal helper.
 Each feature is a `XxxFactory` class under `src/modules/`, wired in `src/hooks.ts`.
@@ -158,5 +158,4 @@ all-items), Reading time (enable), Appearance
 - CI runs `tsc --noEmit` + build on every push and PR (no test, the runner has no
   Zotero binary).
 - Only runtime dependency: `zotero-plugin-toolkit`.
-- Zotero 9 only. The manifest range (`6.999` to `10.*`) is the template default, not a
-  tested support claim.
+- The supported Zotero range is the one declared in the manifest.

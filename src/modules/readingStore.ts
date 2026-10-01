@@ -213,13 +213,13 @@ async function saveToDisk(): Promise<void> {
 function scheduleSave(): void {
   if (state.saveTimer !== undefined) {
     try {
-      _globalThis.clearTimeout(state.saveTimer);
+      clearTimeout(state.saveTimer);
     } catch {
       /* ignore */
     }
     state.saveTimer = undefined;
   }
-  state.saveTimer = _globalThis.setTimeout(() => {
+  state.saveTimer = setTimeout(() => {
     state.saveTimer = undefined;
     if (state.dirty) {
       void saveToDisk();
@@ -355,7 +355,7 @@ export const ReadingStore = {
   async flush(): Promise<void> {
     if (state.saveTimer !== undefined) {
       try {
-        _globalThis.clearTimeout(state.saveTimer);
+        clearTimeout(state.saveTimer);
       } catch {
         /* ignore */
       }
